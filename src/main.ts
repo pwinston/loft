@@ -1,5 +1,4 @@
 import './style.css'
-import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchEditor } from './SketchEditor'
 import { SketchPlane } from './SketchPlane'
@@ -21,32 +20,10 @@ const sketchEditor = new SketchEditor(viewport2dContainer)
 
 // === CREATE SKETCH PLANES ===
 
-// Create three sketch planes at different heights (y=0, y=1, y=2)
-const plane1Vertices = [
-  new THREE.Vector2(-2, -2),
-  new THREE.Vector2(2, -2),
-  new THREE.Vector2(2, 2),
-  new THREE.Vector2(-2, 2),
-]
-
-const plane2Vertices = [
-  new THREE.Vector2(-1.5, -1.5),
-  new THREE.Vector2(1.5, -1.5),
-  new THREE.Vector2(1.5, 1.5),
-  new THREE.Vector2(-1.5, 1.5),
-]
-
-const plane3Vertices = [
-  new THREE.Vector2(-1, -1),
-  new THREE.Vector2(1, -1),
-  new THREE.Vector2(1, 1),
-  new THREE.Vector2(-1, 1),
-]
-
 const sketchPlanes = [
-  new SketchPlane(plane1Vertices, 0),    // Ground floor
-  new SketchPlane(plane2Vertices, 1),    // First floor
-  new SketchPlane(plane3Vertices, 2),    // Second floor
+  new SketchPlane(4, 0),    // Ground floor
+  new SketchPlane(3, 1),    // First floor
+  new SketchPlane(2, 2),    // Second floor
 ]
 
 // Add all planes to the 3D viewport

@@ -21,7 +21,8 @@ export class SketchPlane {
   private planeGroup: THREE.Group
   private planeMesh: THREE.Mesh
 
-  constructor(vertices: THREE.Vector2[], height: number) {
+  constructor(size: number, height: number) {
+    const vertices = SketchPlane.createSquare(size)
     this.sketch = new Sketch(vertices)
     this.height = height
     this.planeGroup = new THREE.Group()
@@ -131,5 +132,18 @@ export class SketchPlane {
     const material = this.planeMesh.material as THREE.MeshBasicMaterial
     material.color.setHex(style.color)
     material.opacity = style.opacity
+  }
+
+  /**
+   * Create a centered square with the given size
+   */
+  private static createSquare(size: number): THREE.Vector2[] {
+    const half = size / 2
+    return [
+      new THREE.Vector2(-half, -half),
+      new THREE.Vector2(half, -half),
+      new THREE.Vector2(half, half),
+      new THREE.Vector2(-half, half),
+    ]
   }
 }
