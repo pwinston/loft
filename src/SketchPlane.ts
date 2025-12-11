@@ -3,6 +3,14 @@ import { Sketch } from './Sketch'
 
 const BORDER_PERCENT = 0.05 // 5% border around sketch
 
+export type PlaneVisualState = 'default' | 'hovered' | 'selected'
+
+const PLANE_STYLES: Record<PlaneVisualState, { color: number; opacity: number }> = {
+  default:  { color: 0x444444, opacity: 0.2 },
+  hovered:  { color: 0xddaa00, opacity: 0.3 },
+  selected: { color: 0x666666, opacity: 0.4 },
+}
+
 /**
  * Represents a 2D sketch plane in 3D space.
  * Contains a Sketch at a specific height (Y position).
@@ -116,16 +124,12 @@ export class SketchPlane {
   }
 
   /**
-   * Highlight this plane (e.g., when selected)
+   * Set the visual state of this plane
    */
-  setHighlight(highlighted: boolean): void {
+  setVisualState(state: PlaneVisualState): void {
+    const style = PLANE_STYLES[state]
     const material = this.planeMesh.material as THREE.MeshBasicMaterial
-    if (highlighted) {
-      material.color.setHex(0x666666)
-      material.opacity = 0.4
-    } else {
-      material.color.setHex(0x444444)
-      material.opacity = 0.2
-    }
+    material.color.setHex(style.color)
+    material.opacity = style.opacity
   }
 }

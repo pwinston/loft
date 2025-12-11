@@ -39,55 +39,59 @@ export class PlaneSelector {
   }
 
   /**
-   * Handle mouse move for hover feedback
+   * Highlight the plane we are hovering over
    */
   private handleMouseMove(event: MouseEvent): void {
     const planeMeshes = this.planes.map(p => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
-    // Clear previous hover
+    // Clear previous hover (restore to default, not selected)
     if (this.hoveredPlane && this.hoveredPlane !== this.selectedPlane) {
-      this.hoveredPlane.setHighlight(false)
+      this.hoveredPlane.setVisualState('default')
     }
     this.hoveredPlane = null
 
-    // Highlight hovered plane
+    // Highlight hovered plane (but not if it's already selected)
     if (intersects.length > 0) {
       const intersectedMesh = intersects[0].object
       const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
       if (plane && plane !== this.selectedPlane) {
-        plane.setHighlight(true)
+        plane.setVisualState('hovered')
         this.hoveredPlane = plane
       }
     }
   }
 
   /**
-   * Handle mouse up for selection (only if not dragging)
+   * Handle mouse up - detect clicks vs drags
    */
   private handleMouseUp(event: MouseEvent): void {
-    // Check if this was a click (not a drag)
-    if (this.mouseDownPos) {
+    if (this.mouseDownPos && event.button === 0) {
       const dx = event.clientX - this.mouseDownPos.x
       const dy = event.clientY - this.mouseDownPos.y
       const distance = Math.sqrt(dx * dx + dy * dy)
 
-      // Only select if mouse didn't move much (not a drag)
-      if (distance < this.clickThreshold && event.button === 0) {
-        const planeMeshes = this.planes.map(p => p.getPlaneMesh())
-        const intersects = this.viewport3d.raycast(event, planeMeshes)
-
-        if (intersects.length > 0) {
-          const intersectedMesh = intersects[0].object
-          const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
-          if (plane) {
-            this.selectPlane(plane)
-          }
-        }
+      if (distance < this.clickThreshold) {
+        this.handleClick(event)
       }
     }
-
     this.mouseDownPos = null
+  }
+
+  /**
+   * Handle click - select plane under cursor
+   */
+  private handleClick(event: MouseEvent): void {
+    const planeMeshes = this.planes.map(p => p.getPlaneMesh())
+    const intersects = this.viewport3d.raycast(event, planeMeshes)
+
+    if (intersects.length > 0) {
+      const intersectedMesh = intersects[0].object
+      const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
+      if (plane) {
+        this.selectPlane(plane)
+      }
+    }
   }
 
   /**
@@ -96,12 +100,12 @@ export class PlaneSelector {
   selectPlane(plane: SketchPlane): void {
     // Deselect previous plane
     if (this.selectedPlane) {
-      this.selectedPlane.setHighlight(false)
+      this.selectedPlane.setVisualState('default')
     }
 
     // Select new plane
     this.selectedPlane = plane
-    this.selectedPlane.setHighlight(true)
+    this.selectedPlane.setVisualState('selected')
 
     // Notify callback
     if (this.onSelectionChange) {
