@@ -1,9 +1,9 @@
 import './style.css'
-import { Viewport3D } from './Viewport3D'
-import { SketchEditor } from './SketchEditor'
-import { SketchPlane } from './SketchPlane'
-import { PlaneSelector } from './PlaneSelector'
-import { HelpBar } from './HelpBar'
+import { Viewport3D } from './3d/Viewport3D'
+import { PlaneSelector } from './3d/PlaneSelector'
+import { SketchEditor } from './2d/SketchEditor'
+import { SketchPlane } from './3d/SketchPlane'
+import { HelpBar } from './util/HelpBar'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `

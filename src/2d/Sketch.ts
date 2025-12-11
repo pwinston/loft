@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Bounds } from './Bounds'
+import { Bounds } from '../util/Bounds'
 
 const VERTEX_SIZE = 0.15
 const VERTEX_COLOR = 0xffff00

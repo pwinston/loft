@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Sketch } from './Sketch'
+import { Sketch } from '../2d/Sketch'
 
 const BORDER_PERCENT = 0.05 // 5% border around sketch
 
