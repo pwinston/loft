@@ -25,7 +25,7 @@ like. I added all decisions to the README.
 
 # PRs
 
-[PR #1](https://github.com/pwinston/maru/pull/1) - Split Screen: 3D viewport on left, 2d sketch view on right  
+### Split Screen: 3D viewport on left, 2d sketch view on right ([PR #1](https://github.com/pwinston/maru/pull/1))
 1. Initial split-screen view
 2. 3D Viewport on the left for planes and loft
 3. 2D Viewport on the right for editing sketches
