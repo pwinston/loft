@@ -44,7 +44,8 @@ like. I added all decisions to the README.
 4. Improve `PlaneSelector` and have 3 colors: normnal, hover, and selected
 ![](images/03.jpg)
 
-## Ability to Add and Delete vertexes ([PR #4](https://github.com/pwinston/maru/pull/4))1. Modify `Sketch` and `SketchEditor` so we can add/delete vertices
+## Ability to Add and Delete vertexes ([PR #4](https://github.com/pwinston/maru/pull/4))
+1. Modify `Sketch` and `SketchEditor` so we can add/delete vertices
 2. Add mouse-wheel-zoom to `SketchEditor`
 ![](images/04.jpg)
 
@@ -54,6 +55,4 @@ like. I added all decisions to the README.
 3. 3D: Delete planes by dragging planes below ground, turns red, let go
 4. 2D: Detect self-intersections, dragged vert turns red, drop red vert to delete
 4. 2D: New `Geometry.ts` file
-
-Also re-organized code, added subdirectories under src: 2d, 3d, util
 ![](images/05.jpg)
