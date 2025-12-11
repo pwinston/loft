@@ -60,8 +60,7 @@ const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
 
 // Update 2D editor when plane selection changes
 planeSelector.setOnSelectionChange((plane) => {
-  sketchEditor.clear()
-  sketchEditor.createPolygon(plane.getVertices())
+  sketchEditor.setSketch(plane.getSketch())
 })
 
 // Select the first plane by default

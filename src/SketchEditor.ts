@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { Sketch } from './Sketch'
 
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
@@ -9,6 +10,7 @@ export class SketchEditor {
   private renderer: THREE.WebGLRenderer
   private container: HTMLElement
   private frustumSize: number = 10
+  private currentSketch: Sketch | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -36,42 +38,29 @@ export class SketchEditor {
   }
 
   /**
-   * Create a simple polygon sketch
+   * Set the sketch to display and edit
    */
-  createPolygon(vertices: THREE.Vector2[]): THREE.Line {
-    // Convert 2D points to 3D (z=0) and close the loop
-    const points3d = vertices.map(v => new THREE.Vector3(v.x, v.y, 0))
-    points3d.push(points3d[0].clone()) // Close the loop
-
-    const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-    const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 })
-    const line = new THREE.Line(geometry, material)
-
-    this.scene.add(line)
-    return line
+  setSketch(sketch: Sketch): void {
+    this.clear()
+    this.currentSketch = sketch
+    this.scene.add(sketch.getEditorGroup())
   }
 
   /**
-   * Clear all objects from the scene
+   * Get the current sketch
+   */
+  getSketch(): Sketch | null {
+    return this.currentSketch
+  }
+
+  /**
+   * Clear the scene
    */
   clear(): void {
-    while(this.scene.children.length > 0) {
-      this.scene.remove(this.scene.children[0])
+    if (this.currentSketch) {
+      this.scene.remove(this.currentSketch.getEditorGroup())
+      this.currentSketch = null
     }
-  }
-
-  /**
-   * Add an object to the 2D scene
-   */
-  add(object: THREE.Object3D): void {
-    this.scene.add(object)
-  }
-
-  /**
-   * Remove an object from the 2D scene
-   */
-  remove(object: THREE.Object3D): void {
-    this.scene.remove(object)
   }
 
   /**
