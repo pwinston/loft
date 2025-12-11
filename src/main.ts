@@ -71,6 +71,9 @@ new HelpBar([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
   { key: 'Left-drag', action: 'Orbit' },
+  { key: 'Drag plane', action: 'Adjust height' },
+  { key: 'Drag ground', action: 'Add floor' },
+  { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
 new HelpBar([
