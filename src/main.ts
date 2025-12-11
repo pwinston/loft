@@ -1,5 +1,4 @@
 import './style.css'
-import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchEditor } from './SketchEditor'
 import { SketchPlane } from './SketchPlane'
@@ -11,64 +10,51 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="viewport-2d"></div>
 `
 
-// Get container elements
-const viewport3dContainer = document.querySelector<HTMLDivElement>('#viewport-3d')!
-const viewport2dContainer = document.querySelector<HTMLDivElement>('#viewport-2d')!
+// Get container elements.
+const container3d = document.querySelector<HTMLDivElement>('#viewport-3d')!
+const container2d = document.querySelector<HTMLDivElement>('#viewport-2d')!
 
-// Create viewports
-const viewport3d = new Viewport3D(viewport3dContainer)
-const sketchEditor = new SketchEditor(viewport2dContainer)
+// Create Viewports.
+const viewport3d = new Viewport3D(container3d)
+const sketchEditor = new SketchEditor(container2d)
 
-// === CREATE SKETCH PLANES ===
-
-// Create three sketch planes at different heights (y=0, y=1, y=2)
-const plane1Vertices = [
-  new THREE.Vector2(-2, -2),
-  new THREE.Vector2(2, -2),
-  new THREE.Vector2(2, 2),
-  new THREE.Vector2(-2, 2),
-]
-
-const plane2Vertices = [
-  new THREE.Vector2(-1.5, -1.5),
-  new THREE.Vector2(1.5, -1.5),
-  new THREE.Vector2(1.5, 1.5),
-  new THREE.Vector2(-1.5, 1.5),
-]
-
-const plane3Vertices = [
-  new THREE.Vector2(-1, -1),
-  new THREE.Vector2(1, -1),
-  new THREE.Vector2(1, 1),
-  new THREE.Vector2(-1, 1),
-]
-
+// Default planes.
 const sketchPlanes = [
-  new SketchPlane(plane1Vertices, 0),    // Ground floor
-  new SketchPlane(plane2Vertices, 1),    // First floor
-  new SketchPlane(plane3Vertices, 2),    // Second floor
+  new SketchPlane(4, 0),    // Ground floor
+  new SketchPlane(3, 1),    // First floor
+  new SketchPlane(2, 2),    // Second floor
 ]
 
-// Add all planes to the 3D viewport
+// Add planes to the 3D viewport.
 sketchPlanes.forEach(plane => {
   viewport3d.add(plane.getGroup())
 })
-
-// === PLANE SELECTION ===
 
 const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
 
 // Update 2D editor when plane selection changes
 planeSelector.setOnSelectionChange((plane) => {
-  sketchEditor.clear()
-  sketchEditor.createPolygon(plane.getVertices())
+  sketchEditor.setSketch(plane.getSketch())
+})
+
+// Update 3D view when vertices are dragged in 2D editor
+sketchEditor.setOnVertexChange((index, position) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    selectedPlane.setVertex(index, position)
+  }
 })
 
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 
-// === ANIMATION LOOP ===
+// Resize handler
+window.addEventListener('resize', () => {
+  viewport3d.resize()
+  sketchEditor.resize()
+})
 
+// Animation loop
 function animate() {
   requestAnimationFrame(animate)
 
@@ -77,11 +63,5 @@ function animate() {
   sketchEditor.render()
 }
 
-// === WINDOW RESIZE HANDLER ===
-
-window.addEventListener('resize', () => {
-  viewport3d.resize()
-  sketchEditor.resize()
-})
-
+// Start animation loop!
 animate()

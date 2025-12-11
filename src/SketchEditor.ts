@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { Sketch } from './Sketch'
 
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
@@ -9,9 +10,16 @@ export class SketchEditor {
   private renderer: THREE.WebGLRenderer
   private container: HTMLElement
   private frustumSize: number = 10
+  private currentSketch: Sketch | null = null
+
+  // Dragging state
+  private raycaster: THREE.Raycaster
+  private draggedVertexIndex: number | null = null  // null means not dragging
+  private onVertexChange: ((index: number, position: THREE.Vector2) => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
+    this.raycaster = new THREE.Raycaster()
 
     // Create scene
     this.scene = new THREE.Scene()
@@ -33,45 +41,131 @@ export class SketchEditor {
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(this.renderer.domElement)
+
+    // Set up mouse event handlers for dragging
+    this.setupMouseHandlers()
   }
 
   /**
-   * Create a simple polygon sketch
+   * Set up mouse event handlers for vertex dragging
    */
-  createPolygon(vertices: THREE.Vector2[]): THREE.Line {
-    // Convert 2D points to 3D (z=0) and close the loop
-    const points3d = vertices.map(v => new THREE.Vector3(v.x, v.y, 0))
-    points3d.push(points3d[0].clone()) // Close the loop
+  private setupMouseHandlers(): void {
+    const canvas = this.renderer.domElement
 
-    const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-    const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 })
-    const line = new THREE.Line(geometry, material)
-
-    this.scene.add(line)
-    return line
+    canvas.addEventListener('mousedown', (e) => this.onMouseDown(e))
+    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
+    canvas.addEventListener('mouseup', () => this.onMouseUp())
+    canvas.addEventListener('mouseleave', () => this.onMouseUp())
   }
 
   /**
-   * Clear all objects from the scene
+   * Convert mouse event to normalized device coordinates
    */
-  clear(): void {
-    while(this.scene.children.length > 0) {
-      this.scene.remove(this.scene.children[0])
+  private getMouseNDC(event: MouseEvent): THREE.Vector2 {
+    const rect = this.container.getBoundingClientRect()
+    return new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    )
+  }
+
+  /**
+   * Convert mouse position to world coordinates
+   */
+  private getWorldPosition(event: MouseEvent): THREE.Vector2 {
+    const ndc = this.getMouseNDC(event)
+    const worldX = ndc.x * (this.camera.right - this.camera.left) / 2 + this.camera.position.x
+    const worldY = ndc.y * (this.camera.top - this.camera.bottom) / 2 + this.camera.position.y
+    return new THREE.Vector2(worldX, worldY)
+  }
+
+  /**
+   * Handle mouse down - start dragging if clicking on a vertex
+   */
+  private onMouseDown(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    const ndc = this.getMouseNDC(event)
+    this.raycaster.setFromCamera(ndc, this.camera)
+
+    const vertexMeshes = this.currentSketch.getVertexMeshes()
+    const intersects = this.raycaster.intersectObjects(vertexMeshes)
+
+    if (intersects.length > 0) {
+      const mesh = intersects[0].object as THREE.Mesh
+      const index = this.currentSketch.getVertexIndex(mesh)
+      if (index !== null) {
+        this.draggedVertexIndex = index
+        this.container.style.cursor = 'grabbing'
+      }
     }
   }
 
   /**
-   * Add an object to the 2D scene
+   * Handle mouse move - update vertex position if dragging
    */
-  add(object: THREE.Object3D): void {
-    this.scene.add(object)
+  private onMouseMove(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    if (this.draggedVertexIndex !== null) {
+      // Update vertex position while dragging
+      const worldPos = this.getWorldPosition(event)
+
+      // Notify owner to update the vertex (owner is responsible for calling sketch.setVertex)
+      if (this.onVertexChange) {
+        this.onVertexChange(this.draggedVertexIndex, worldPos)
+      }
+    } else {
+      // Update cursor when hovering over vertices
+      const ndc = this.getMouseNDC(event)
+      this.raycaster.setFromCamera(ndc, this.camera)
+
+      const vertexMeshes = this.currentSketch.getVertexMeshes()
+      const intersects = this.raycaster.intersectObjects(vertexMeshes)
+
+      this.container.style.cursor = intersects.length > 0 ? 'grab' : 'default'
+    }
   }
 
   /**
-   * Remove an object from the 2D scene
+   * Handle mouse up - stop dragging
    */
-  remove(object: THREE.Object3D): void {
-    this.scene.remove(object)
+  private onMouseUp(): void {
+    this.draggedVertexIndex = null
+    this.container.style.cursor = 'default'
+  }
+
+  /**
+   * Set callback for when a vertex position changes
+   */
+  setOnVertexChange(callback: (index: number, position: THREE.Vector2) => void): void {
+    this.onVertexChange = callback
+  }
+
+  /**
+   * Set the sketch to display and edit
+   */
+  setSketch(sketch: Sketch): void {
+    this.clear()
+    this.currentSketch = sketch
+    this.scene.add(sketch.getEditorGroup())
+  }
+
+  /**
+   * Get the current sketch
+   */
+  getSketch(): Sketch | null {
+    return this.currentSketch
+  }
+
+  /**
+   * Clear the scene
+   */
+  clear(): void {
+    if (this.currentSketch) {
+      this.scene.remove(this.currentSketch.getEditorGroup())
+      this.currentSketch = null
+    }
   }
 
   /**
