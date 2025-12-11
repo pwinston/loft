@@ -63,6 +63,14 @@ planeSelector.setOnSelectionChange((plane) => {
   sketchEditor.setSketch(plane.getSketch())
 })
 
+// Update 3D view when vertices are dragged in 2D editor
+sketchEditor.setOnVertexChange((index, position) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    selectedPlane.setVertex(index, position)
+  }
+})
+
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 

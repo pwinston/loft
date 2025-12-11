@@ -12,8 +12,15 @@ export class SketchEditor {
   private frustumSize: number = 10
   private currentSketch: Sketch | null = null
 
+  // Dragging state
+  private raycaster: THREE.Raycaster
+  private isDragging: boolean = false
+  private draggedVertexIndex: number | null = null
+  private onVertexChange: ((index: number, position: THREE.Vector2) => void) | null = null
+
   constructor(container: HTMLElement) {
     this.container = container
+    this.raycaster = new THREE.Raycaster()
 
     // Create scene
     this.scene = new THREE.Scene()
@@ -35,6 +42,107 @@ export class SketchEditor {
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(this.renderer.domElement)
+
+    // Set up mouse event handlers for dragging
+    this.setupMouseHandlers()
+  }
+
+  /**
+   * Set up mouse event handlers for vertex dragging
+   */
+  private setupMouseHandlers(): void {
+    const canvas = this.renderer.domElement
+
+    canvas.addEventListener('mousedown', (e) => this.onMouseDown(e))
+    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
+    canvas.addEventListener('mouseup', () => this.onMouseUp())
+    canvas.addEventListener('mouseleave', () => this.onMouseUp())
+  }
+
+  /**
+   * Convert mouse event to normalized device coordinates
+   */
+  private getMouseNDC(event: MouseEvent): THREE.Vector2 {
+    const rect = this.container.getBoundingClientRect()
+    return new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    )
+  }
+
+  /**
+   * Convert mouse position to world coordinates
+   */
+  private getWorldPosition(event: MouseEvent): THREE.Vector2 {
+    const ndc = this.getMouseNDC(event)
+    const worldX = ndc.x * (this.camera.right - this.camera.left) / 2 + this.camera.position.x
+    const worldY = ndc.y * (this.camera.top - this.camera.bottom) / 2 + this.camera.position.y
+    return new THREE.Vector2(worldX, worldY)
+  }
+
+  /**
+   * Handle mouse down - start dragging if clicking on a vertex
+   */
+  private onMouseDown(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    const ndc = this.getMouseNDC(event)
+    this.raycaster.setFromCamera(ndc, this.camera)
+
+    const vertexMeshes = this.currentSketch.getVertexMeshes()
+    const intersects = this.raycaster.intersectObjects(vertexMeshes)
+
+    if (intersects.length > 0) {
+      const mesh = intersects[0].object as THREE.Mesh
+      const index = this.currentSketch.getVertexIndex(mesh)
+      if (index !== null) {
+        this.isDragging = true
+        this.draggedVertexIndex = index
+        this.container.style.cursor = 'grabbing'
+      }
+    }
+  }
+
+  /**
+   * Handle mouse move - update vertex position if dragging
+   */
+  private onMouseMove(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    if (this.isDragging && this.draggedVertexIndex !== null) {
+      // Update vertex position while dragging
+      const worldPos = this.getWorldPosition(event)
+
+      // Notify owner to update the vertex (owner is responsible for calling sketch.setVertex)
+      if (this.onVertexChange) {
+        this.onVertexChange(this.draggedVertexIndex, worldPos)
+      }
+    } else {
+      // Update cursor when hovering over vertices
+      const ndc = this.getMouseNDC(event)
+      this.raycaster.setFromCamera(ndc, this.camera)
+
+      const vertexMeshes = this.currentSketch.getVertexMeshes()
+      const intersects = this.raycaster.intersectObjects(vertexMeshes)
+
+      this.container.style.cursor = intersects.length > 0 ? 'grab' : 'default'
+    }
+  }
+
+  /**
+   * Handle mouse up - stop dragging
+   */
+  private onMouseUp(): void {
+    this.isDragging = false
+    this.draggedVertexIndex = null
+    this.container.style.cursor = 'default'
+  }
+
+  /**
+   * Set callback for when a vertex position changes
+   */
+  setOnVertexChange(callback: (index: number, position: THREE.Vector2) => void): void {
+    this.onVertexChange = callback
   }
 
   /**
