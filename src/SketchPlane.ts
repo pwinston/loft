@@ -31,18 +31,57 @@ export class SketchPlane {
   }
 
   /**
-   * Create a semi-transparent rectangular plane
+   * Create a semi-transparent rectangular plane sized to the sketch
    */
   private createPlaneMesh(): THREE.Mesh {
-    const planeSize = 10
-    const geometry = new THREE.PlaneGeometry(planeSize, planeSize)
+    const bounds = this.calculateBounds()
+    const borderPercent = 0.05 // 5% border
+
+    const width = bounds.width * (1 + 2 * borderPercent)
+    const height = bounds.height * (1 + 2 * borderPercent)
+
+    const geometry = new THREE.PlaneGeometry(width, height)
     const material = new THREE.MeshBasicMaterial({
       color: 0x444444,
       transparent: true,
       opacity: 0.2,
       side: THREE.DoubleSide
     })
-    return new THREE.Mesh(geometry, material)
+
+    const mesh = new THREE.Mesh(geometry, material)
+    // Center the plane on the sketch
+    mesh.position.x = bounds.centerX
+    mesh.position.y = bounds.centerY
+
+    return mesh
+  }
+
+  /**
+   * Calculate bounding box of the sketch vertices
+   */
+  private calculateBounds(): { width: number; height: number; centerX: number; centerY: number } {
+    if (this.vertices.length === 0) {
+      return { width: 2, height: 2, centerX: 0, centerY: 0 }
+    }
+
+    let minX = this.vertices[0].x
+    let maxX = this.vertices[0].x
+    let minY = this.vertices[0].y
+    let maxY = this.vertices[0].y
+
+    for (const vertex of this.vertices) {
+      minX = Math.min(minX, vertex.x)
+      maxX = Math.max(maxX, vertex.x)
+      minY = Math.min(minY, vertex.y)
+      maxY = Math.max(maxY, vertex.y)
+    }
+
+    return {
+      width: maxX - minX,
+      height: maxY - minY,
+      centerX: (minX + maxX) / 2,
+      centerY: (minY + maxY) / 2
+    }
   }
 
   /**
@@ -95,10 +134,14 @@ export class SketchPlane {
   setVertices(vertices: THREE.Vector2[]): void {
     this.vertices = vertices
 
-    // Remove old outline
+    // Remove old plane and outline
+    this.planeGroup.remove(this.planeMesh)
     this.planeGroup.remove(this.outlineLine)
 
-    // Create new outline
+    // Create new plane and outline
+    this.planeMesh = this.createPlaneMesh()
+    this.planeGroup.add(this.planeMesh)
+
     this.outlineLine = this.createOutline()
     this.planeGroup.add(this.outlineLine)
   }

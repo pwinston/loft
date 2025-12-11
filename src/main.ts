@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchEditor } from './SketchEditor'
 import { SketchPlane } from './SketchPlane'
+import { PlaneSelector } from './PlaneSelector'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -55,65 +56,16 @@ sketchPlanes.forEach(plane => {
 
 // === PLANE SELECTION ===
 
-let selectedPlane: SketchPlane | null = null
+const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
 
-function selectPlane(plane: SketchPlane) {
-  // Deselect previous plane
-  if (selectedPlane) {
-    selectedPlane.setHighlight(false)
-  }
-
-  // Select new plane
-  selectedPlane = plane
-  selectedPlane.setHighlight(true)
-
-  // Update 2D editor with selected plane's vertices
+// Update 2D editor when plane selection changes
+planeSelector.setOnSelectionChange((plane) => {
   sketchEditor.clear()
   sketchEditor.createPolygon(plane.getVertices())
-}
+})
 
 // Select the first plane by default
-selectPlane(sketchPlanes[0])
-
-// === MOUSE INTERACTION ===
-
-let hoveredPlane: SketchPlane | null = null
-
-// Handle mouse move for hover feedback
-viewport3d.getElement().addEventListener('mousemove', (event) => {
-  const planeMeshes = sketchPlanes.map(p => p.getPlaneMesh())
-  const intersects = viewport3d.raycast(event, planeMeshes)
-
-  // Clear previous hover
-  if (hoveredPlane && hoveredPlane !== selectedPlane) {
-    hoveredPlane.setHighlight(false)
-  }
-  hoveredPlane = null
-
-  // Highlight hovered plane
-  if (intersects.length > 0) {
-    const intersectedMesh = intersects[0].object
-    const plane = sketchPlanes.find(p => p.getPlaneMesh() === intersectedMesh)
-    if (plane && plane !== selectedPlane) {
-      plane.setHighlight(true)
-      hoveredPlane = plane
-    }
-  }
-})
-
-// Handle click for selection
-viewport3d.getElement().addEventListener('click', (event) => {
-  const planeMeshes = sketchPlanes.map(p => p.getPlaneMesh())
-  const intersects = viewport3d.raycast(event, planeMeshes)
-
-  if (intersects.length > 0) {
-    const intersectedMesh = intersects[0].object
-    const plane = sketchPlanes.find(p => p.getPlaneMesh() === intersectedMesh)
-    if (plane) {
-      selectPlane(plane)
-    }
-  }
-})
+planeSelector.selectPlane(sketchPlanes[0])
 
 // === ANIMATION LOOP ===
 
