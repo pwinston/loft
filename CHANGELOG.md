@@ -56,3 +56,8 @@ like. I added all decisions to the README.
 4. 2D: Detect self-intersections, dragged vert turns red, drop red vert to delete
 4. 2D: New `Geometry.ts` file
 ![](images/05.jpg)
+
+### Can create a simple loft! ([PR #6](https://github.com/pwinston/maru/pull/6))  
+1. For now same number of vertices on all sketch
+2. Option bar: None, Solid, Wireframe, Both
+![](images/06.jpg)
