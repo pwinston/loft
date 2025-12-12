@@ -1,9 +1,5 @@
 import * as THREE from 'three'
-import { GRID_SIZE } from '../constants'
-
-const GRID_COLOR = 0x444444  // Subtle gray for grid lines
-const AXIS_X_COLOR = 0x884444  // Muted red for X axis
-const AXIS_Y_COLOR = 0x448844  // Muted green for Y/Z axis
+import { GRID } from '../constants'
 
 /**
  * Create a 2D grid with colored axis lines.
@@ -12,11 +8,11 @@ const AXIS_Y_COLOR = 0x448844  // Muted green for Y/Z axis
  */
 export function createGrid(spacing: number): THREE.Group {
   const group = new THREE.Group()
-  const halfSize = GRID_SIZE / 2
-  const divisions = GRID_SIZE / spacing
+  const halfSize = GRID.SIZE / 2
+  const divisions = GRID.SIZE / spacing
 
   // Grid lines (excluding axes which we'll draw separately)
-  const gridMaterial = new THREE.LineBasicMaterial({ color: GRID_COLOR, transparent: true, opacity: 0.3 })
+  const gridMaterial = new THREE.LineBasicMaterial({ color: GRID.COLOR, transparent: true, opacity: 0.3 })
 
   // Vertical lines (parallel to Y axis)
   for (let i = -divisions / 2; i <= divisions / 2; i++) {
@@ -41,7 +37,7 @@ export function createGrid(spacing: number): THREE.Group {
   }
 
   // X axis (red) - horizontal
-  const xAxisMaterial = new THREE.LineBasicMaterial({ color: AXIS_X_COLOR, transparent: true, opacity: 0.6 })
+  const xAxisMaterial = new THREE.LineBasicMaterial({ color: GRID.AXIS_X_COLOR, transparent: true, opacity: 0.6 })
   const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(-halfSize, 0, 0),
     new THREE.Vector3(halfSize, 0, 0)
@@ -49,7 +45,7 @@ export function createGrid(spacing: number): THREE.Group {
   group.add(new THREE.Line(xAxisGeometry, xAxisMaterial))
 
   // Y axis (green) - vertical in 2D, becomes Z in 3D
-  const yAxisMaterial = new THREE.LineBasicMaterial({ color: AXIS_Y_COLOR, transparent: true, opacity: 0.6 })
+  const yAxisMaterial = new THREE.LineBasicMaterial({ color: GRID.AXIS_Y_COLOR, transparent: true, opacity: 0.6 })
   const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0, -halfSize, 0),
     new THREE.Vector3(0, halfSize, 0)

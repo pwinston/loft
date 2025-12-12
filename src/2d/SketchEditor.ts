@@ -2,11 +2,7 @@ import * as THREE from 'three'
 import { Sketch } from './Sketch'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
-import { CAMERA_2D_FRUSTUM_SIZE, GRID_SPACING_2D } from '../constants'
-
-const GHOST_VERTEX_SIZE = 0.12
-const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
-const DELETE_VERTEX_COLOR = 0xff0000 // Red for deletion
+import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
 
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
@@ -16,7 +12,7 @@ export class SketchEditor {
   private camera: THREE.OrthographicCamera
   private renderer: THREE.WebGLRenderer
   private container: HTMLElement
-  private frustumSize: number = CAMERA_2D_FRUSTUM_SIZE
+  private frustumSize: number = VIEWPORT_2D.FRUSTUM_SIZE
   private currentSketch: Sketch | null = null
 
   // Dragging state
@@ -45,17 +41,17 @@ export class SketchEditor {
 
     // Create scene
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x2a2a2a)
+    this.scene.background = new THREE.Color(VIEWPORT_2D.BACKGROUND_COLOR)
 
     // Add ground grid (already in XY plane)
-    const grid = createGrid(GRID_SPACING_2D)
+    const grid = createGrid(GRID.SPACING_2D)
     grid.position.z = -0.01  // Behind everything else
     this.scene.add(grid)
 
     // Create ghost vertex (hidden until hovering a segment)
-    const ghostGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const ghostGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
     const ghostMaterial = new THREE.MeshBasicMaterial({
-      color: GHOST_VERTEX_COLOR,
+      color: SKETCH.GHOST_VERTEX_COLOR,
       transparent: true,
       opacity: 0.6,
       side: THREE.DoubleSide
@@ -66,9 +62,9 @@ export class SketchEditor {
     this.scene.add(this.ghostVertex)
 
     // Create delete preview marker (shown when dragging vertex causes self-intersection)
-    const deleteGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const deleteGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
     const deleteMaterial = new THREE.MeshBasicMaterial({
-      color: DELETE_VERTEX_COLOR,
+      color: SKETCH.DELETE_COLOR,
       transparent: true,
       opacity: 0.8,
       side: THREE.DoubleSide

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchPlane } from './SketchPlane'
+import { INTERACTION } from '../constants'
 
 /**
  * PlaneDragger
@@ -18,7 +19,6 @@ export class PlaneDragger {
   private dragStartHeight: number = 0
   private isCreatingNewPlane: boolean = false
   private isDeletingPlane: boolean = false
-  private deleteThreshold: number = 0.05
 
   // Callbacks
   private onPlaneHeightChange?: (plane: SketchPlane, height: number) => void
@@ -95,7 +95,7 @@ export class PlaneDragger {
     const rawHeight = this.dragStartHeight + heightDelta
 
     // Check if dragging below delete threshold (only for non-ground planes)
-    if (!this.isCreatingNewPlane && rawHeight < this.deleteThreshold) {
+    if (!this.isCreatingNewPlane && rawHeight < INTERACTION.DELETE_THRESHOLD) {
       this.isDeletingPlane = true
       this.draggedPlane.setHeight(rawHeight) // Let it go fully below ground
       this.draggedPlane.setVisualState('deleting')
