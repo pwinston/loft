@@ -245,6 +245,10 @@ button:focus-visible {
   color: rgba(255, 255, 255, 0.9);
 }
 
+.action-toolbar button:focus {
+  outline: none;
+}
+
 /* Orientation toolbar (2D viewport) */
 .orientation-toolbar {
   position: absolute;
