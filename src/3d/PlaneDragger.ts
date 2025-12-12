@@ -47,7 +47,7 @@ export class PlaneDragger {
   }
 
   /**
-   * Start dragging a plane (or create a new one if clicking ground)
+   * Start dragging a plane (or create a new one if clicking ground or shift-dragging)
    */
   startDrag(event: MouseEvent, intersectedMesh: THREE.Object3D): void {
     const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
@@ -61,11 +61,11 @@ export class PlaneDragger {
     this.dragStartWorldY = this.viewport3d.getWorldYAtMouse(event) ?? 0
     this.dragStartHeight = plane.getHeight()
 
-    // If this is the ground plane (height 0), we'll create a new plane
-    if (plane.getHeight() === 0) {
+    // Create a new plane if: ground plane (height 0) OR shift is held
+    if (plane.getHeight() === 0 || event.shiftKey) {
       this.isCreatingNewPlane = true
-      // Create a new plane by copying the ground plane's sketch
-      const newPlane = new SketchPlane(4, 0) // Start at height 0
+      // Create a new plane by copying the source plane's sketch
+      const newPlane = new SketchPlane(4, plane.getHeight())
       newPlane.setVertices(plane.getVertices())
       this.draggedPlane = newPlane
     } else {
