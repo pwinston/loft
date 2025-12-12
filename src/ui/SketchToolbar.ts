@@ -35,6 +35,7 @@ export class SketchToolbar {
       <button data-sides="12">12</button>
       <button data-sides="16">16</button>
       <button data-sides="20">20</button>
+      <button data-sides="100">100</button>
     `
     container.appendChild(this.shapeElement)
 
