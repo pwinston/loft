@@ -132,6 +132,50 @@ renderToolbar.addEventListener('click', (e) => {
   }
 })
 
+// Reset to a single 1x1 square plane at ground level
+function newModel(): void {
+  // Remove all existing planes from 3D viewport
+  sketchPlanes.forEach(plane => viewport3d.remove(plane.getGroup()))
+
+  // Create a single plane with 1x1 square at ground level
+  const newPlane = new SketchPlane(1, 0)
+  const newPlanes = [newPlane]
+
+  // Add to 3D viewport
+  viewport3d.add(newPlane.getGroup())
+
+  // Reset the plane selector with new planes
+  planeSelector.reset(newPlanes)
+
+  // Update profile visibility
+  updateProfileVisibility(loft.getRenderMode())
+
+  // Rebuild loft (will be empty with just 1 plane)
+  loft.rebuild(newPlanes)
+
+  // Select the new plane
+  planeSelector.selectPlane(newPlane)
+}
+
+// Create action toolbar (right side)
+const actionToolbar = document.createElement('div')
+actionToolbar.className = 'action-toolbar'
+actionToolbar.innerHTML = `
+  <button data-action="new">New</button>
+`
+container3d.appendChild(actionToolbar)
+
+// Handle action toolbar button clicks
+actionToolbar.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'BUTTON') {
+    const action = target.dataset.action
+    if (action === 'new') {
+      newModel()
+    }
+  }
+})
+
 new HelpBar([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
