@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { Sketch } from '../2d/Sketch'
 
-const BORDER_PERCENT = 0.05 // 5% border around sketch
+const BORDER_PERCENT = 0.15 // 15% border around sketch
 
 export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
 
