@@ -156,13 +156,16 @@ function newModel(): void {
 
   // Create a single plane with default building size at ground level
   const newPlane = new SketchPlane(DEFAULT_BUILDING_SIZE, 0)
-  const newPlanes = [newPlane]
+
+  // Update sketchPlanes array in place (clear and add new plane)
+  sketchPlanes.length = 0
+  sketchPlanes.push(newPlane)
 
   // Add to 3D viewport
   viewport3d.add(newPlane.getGroup())
 
-  // Reset the plane selector with new planes
-  planeSelector.reset(newPlanes)
+  // Reset the plane selector with the updated sketchPlanes
+  planeSelector.reset(sketchPlanes)
 
   // Switch to 'none' mode since there's no loft with 1 plane
   setRenderMode('none')
