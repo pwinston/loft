@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Sketch } from './Sketch'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
+import { CAMERA_2D_FRUSTUM_SIZE, GRID_SPACING_2D } from '../constants'
 
 const GHOST_VERTEX_SIZE = 0.12
 const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
@@ -15,7 +16,7 @@ export class SketchEditor {
   private camera: THREE.OrthographicCamera
   private renderer: THREE.WebGLRenderer
   private container: HTMLElement
-  private frustumSize: number = 10
+  private frustumSize: number = CAMERA_2D_FRUSTUM_SIZE
   private currentSketch: Sketch | null = null
 
   // Dragging state
@@ -47,7 +48,7 @@ export class SketchEditor {
     this.scene.background = new THREE.Color(0x2a2a2a)
 
     // Add ground grid (already in XY plane)
-    const grid = createGrid()
+    const grid = createGrid(GRID_SPACING_2D)
     grid.position.z = -0.01  // Behind everything else
     this.scene.add(grid)
 

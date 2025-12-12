@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { GRID_SIZE, GRID_SPACING } from '../constants'
+import { GRID_SIZE } from '../constants'
 
 const GRID_COLOR = 0x444444  // Subtle gray for grid lines
 const AXIS_X_COLOR = 0x884444  // Muted red for X axis
@@ -10,17 +10,17 @@ const AXIS_Y_COLOR = 0x448844  // Muted green for Y/Z axis
  * Grid is in the XY plane, centered at origin.
  * Use for 2D sketch editor (XY) or rotate for 3D floor (XZ).
  */
-export function createGrid(): THREE.Group {
+export function createGrid(spacing: number): THREE.Group {
   const group = new THREE.Group()
   const halfSize = GRID_SIZE / 2
-  const divisions = GRID_SIZE / GRID_SPACING
+  const divisions = GRID_SIZE / spacing
 
   // Grid lines (excluding axes which we'll draw separately)
   const gridMaterial = new THREE.LineBasicMaterial({ color: GRID_COLOR, transparent: true, opacity: 0.3 })
 
   // Vertical lines (parallel to Y axis)
   for (let i = -divisions / 2; i <= divisions / 2; i++) {
-    const x = i * GRID_SPACING
+    const x = i * spacing
     if (x === 0) continue // Skip axis
     const geometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(x, -halfSize, 0),
@@ -31,7 +31,7 @@ export function createGrid(): THREE.Group {
 
   // Horizontal lines (parallel to X axis)
   for (let i = -divisions / 2; i <= divisions / 2; i++) {
-    const y = i * GRID_SPACING
+    const y = i * spacing
     if (y === 0) continue // Skip axis
     const geometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-halfSize, y, 0),

@@ -80,3 +80,6 @@ at a 3D angle would be a lot harder without really adding much value.
 ### Util
 - **src/util/HelpBar.ts** – help bar at bottom of viewport
 - **src/util/Bounds.ts** - axis-aligned bounding box
+
+### Configuration
+- **src/constants.ts**

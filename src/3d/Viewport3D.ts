@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createGrid } from '../util/GridHelper'
+import { CAMERA_3D_FOV, CAMERA_3D_POSITION, CAMERA_3D_TARGET, GRID_SPACING_3D } from '../constants'
 
 /**
  * The 3D Viewport displays the sketch planes and the lofted shape.
@@ -23,13 +24,13 @@ export class Viewport3D {
 
     // Create camera - positioned to view building from an angle
     this.camera = new THREE.PerspectiveCamera(
-      50,
+      CAMERA_3D_FOV,
       container.clientWidth / container.clientHeight,
       0.1,
       1000
     )
-    this.camera.position.set(8, 6, 8)
-    this.camera.lookAt(0, 1, 0)
+    this.camera.position.set(CAMERA_3D_POSITION.x, CAMERA_3D_POSITION.y, CAMERA_3D_POSITION.z)
+    this.camera.lookAt(CAMERA_3D_TARGET.x, CAMERA_3D_TARGET.y, CAMERA_3D_TARGET.z)
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -40,7 +41,7 @@ export class Viewport3D {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.15
-    this.controls.target.set(0, 1, 0)
+    this.controls.target.set(CAMERA_3D_TARGET.x, CAMERA_3D_TARGET.y, CAMERA_3D_TARGET.z)
     this.controls.update()
 
     // Add lighting
@@ -52,7 +53,7 @@ export class Viewport3D {
     this.scene.add(directionalLight)
 
     // Add ground grid (rotated to XZ plane)
-    const grid = createGrid()
+    const grid = createGrid(GRID_SPACING_3D)
     grid.rotation.x = -Math.PI / 2  // Rotate from XY to XZ plane
     grid.position.y = 0  // On ground level
     this.scene.add(grid)
