@@ -4,9 +4,10 @@ import { PlaneSelector } from './3d/PlaneSelector'
 import { SketchEditor } from './2d/SketchEditor'
 import { SketchPlane } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
-import { Loft, type RenderMode } from './3d/Loft'
+import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE } from './constants'
 import { makeLoftable } from './loft/makeLoftable'
+import { MainToolbar } from './ui/MainToolbar'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -71,10 +72,6 @@ planeSelector.setOnPlaneCreate(() => {
 // Rebuild loft when plane is deleted
 planeSelector.setOnPlaneDelete(() => {
   rebuildLoft()
-  // Switch to 'none' mode if down to 1 plane (no loft to show)
-  if (sketchPlanes.length < 2) {
-    setRenderMode('none')
-  }
 })
 
 // Update 3D view when vertices are dragged in 2D editor
@@ -117,42 +114,28 @@ new HelpPanel([
   { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
-// Create render mode toolbar
-const renderToolbar = document.createElement('div')
-renderToolbar.className = 'render-toolbar'
-renderToolbar.innerHTML = `
-  <button data-mode="none" class="active">None</button>
-  <button data-mode="solid">Solid</button>
-  <button data-mode="wire">Wire</button>
-  <button data-mode="both">Both</button>
-`
-container3d.appendChild(renderToolbar)
+// Create main toolbar
+const mainToolbar = new MainToolbar(container3d)
 
-// Update profile visibility based on render mode
-function updateProfileVisibility(mode: RenderMode): void {
-  const showProfiles = mode === 'none'
-  sketchPlanes.forEach(plane => plane.setProfileVisible(showProfiles))
-}
-
-// Set render mode and update UI
-function setRenderMode(mode: RenderMode): void {
-  loft.setRenderMode(mode)
-  updateProfileVisibility(mode)
-  renderToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
-  renderToolbar.querySelector(`button[data-mode="${mode}"]`)?.classList.add('active')
-}
-
-// Start in 'none' mode since we only have 1 plane (no loft)
-loft.setRenderMode('none')
-updateProfileVisibility('none')
-
-// Handle render mode button clicks
-renderToolbar.addEventListener('click', (e) => {
-  const target = e.target as HTMLElement
-  if (target.tagName === 'BUTTON') {
-    const mode = target.dataset.mode as RenderMode
-    setRenderMode(mode)
+// Wire up toolbar callbacks
+mainToolbar.setOnPlanesChange((visible) => {
+  sketchPlanes.forEach(plane => plane.getGroup().visible = visible)
+  if (!visible) {
+    planeSelector.deselectAll()
   }
+  planeSelector.setEnabled(visible)
+})
+
+mainToolbar.setOnWallsChange((visible) => {
+  loft.setSolidVisible(visible)
+})
+
+mainToolbar.setOnRoofChange((visible) => {
+  loft.setRoofVisible(visible)
+})
+
+mainToolbar.setOnWireframeChange((mode) => {
+  loft.setWireframeMode(mode)
 })
 
 // Reset to a single 1x1 square plane at ground level
@@ -173,8 +156,8 @@ function newModel(): void {
   // Reset the plane selector with the updated sketchPlanes
   planeSelector.reset(sketchPlanes)
 
-  // Switch to 'none' mode since there's no loft with 1 plane
-  setRenderMode('none')
+  // Reset display settings
+  mainToolbar.reset()
 
   // Rebuild loft (will be empty with just 1 plane)
   rebuildLoft()
