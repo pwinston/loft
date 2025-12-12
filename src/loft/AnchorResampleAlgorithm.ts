@@ -4,7 +4,8 @@ import { registerLoftAlgorithm } from './LoftAlgorithms'
 import {
   ensureWindingCCW,
   findNearestVertex,
-  resampleByArcLength,
+  subdivideToCount,
+  subdivideAndAlign,
   computeArcLength,
   pointAtDistance
 } from '../util/Geometry'
@@ -123,12 +124,11 @@ function resampleWithAnchors(
   anchors: Anchor[]
 ): [THREE.Vector2[], THREE.Vector2[]] {
   if (anchors.length === 0) {
-    // Fallback: uniform resampling
+    // Fallback: uniform subdivision with optimized alignment
     const targetCount = Math.max(vertsA.length, vertsB.length)
-    return [
-      resampleByArcLength(vertsA, targetCount),
-      resampleByArcLength(vertsB, targetCount)
-    ]
+    const subdividedA = subdivideToCount(vertsA, targetCount)
+    const alignedB = subdivideAndAlign(subdividedA, vertsB, targetCount)
+    return [subdividedA, alignedB]
   }
 
   const resultA: THREE.Vector2[] = []
@@ -202,11 +202,16 @@ function anchorResampleAlgorithm(sketches: Sketch[]): THREE.Vector2[][] {
   const allSame = counts.every(c => c === counts[0])
 
   if (!allSame) {
-    // Final uniform resampling pass to ensure all match
+    // Final subdivision pass to ensure all match (preserves originals)
     const maxCount = Math.max(...counts)
-    result = result.map(verts =>
-      verts.length === maxCount ? verts : resampleByArcLength(verts, maxCount)
-    )
+    // First one: just subdivide
+    const first = result[0].length === maxCount ? result[0] : subdivideToCount(result[0], maxCount)
+    const aligned: THREE.Vector2[][] = [first]
+    // Rest: subdivide and align to previous
+    for (let i = 1; i < result.length; i++) {
+      aligned.push(subdivideAndAlign(aligned[i - 1], result[i], maxCount))
+    }
+    result = aligned
   }
 
   return result

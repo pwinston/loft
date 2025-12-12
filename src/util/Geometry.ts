@@ -76,8 +76,180 @@ export function computeArcLength(vertices: THREE.Vector2[], closed: boolean = tr
 }
 
 /**
+ * Find the best rotation offset to align polygon B's vertices to polygon A.
+ * Tries all rotations and returns the one that minimizes total distance.
+ *
+ * @param vertsA First polygon vertices
+ * @param vertsB Second polygon vertices (must be same length as A)
+ * @returns Rotation offset for B (B[i] should map to A[(i + offset) % n])
+ */
+export function findBestRotation(
+  vertsA: THREE.Vector2[],
+  vertsB: THREE.Vector2[]
+): number {
+  const n = vertsA.length
+  if (n === 0 || n !== vertsB.length) return 0
+
+  let bestRotation = 0
+  let bestDistance = Infinity
+
+  for (let rotation = 0; rotation < n; rotation++) {
+    let totalDist = 0
+    for (let i = 0; i < n; i++) {
+      const bIdx = (i + rotation) % n
+      totalDist += vertsA[i].distanceToSquared(vertsB[bIdx])
+    }
+    if (totalDist < bestDistance) {
+      bestDistance = totalDist
+      bestRotation = rotation
+    }
+  }
+
+  return bestRotation
+}
+
+/**
+ * Rotate a polygon's vertices by the given offset.
+ * @returns New array with vertices rotated
+ */
+export function rotateVertices(
+  vertices: THREE.Vector2[],
+  offset: number
+): THREE.Vector2[] {
+  const n = vertices.length
+  if (n === 0) return []
+  offset = ((offset % n) + n) % n // Normalize to [0, n)
+  return vertices.map((_, i) => vertices[(i + offset) % n].clone())
+}
+
+/**
+ * Subdivide and align polygon B to match polygon A, minimizing total distance.
+ * Tries all combinations of:
+ *   - Starting rotation for subdivision (affects where interpolated verts go)
+ *   - Alignment rotation after subdivision
+ * Returns the B polygon subdivided and rotated for best match to A.
+ *
+ * @param reference The polygon to match (A)
+ * @param toSubdivide The polygon to subdivide and align (B)
+ * @param targetCount Target vertex count (must be >= both polygon lengths)
+ */
+export function subdivideAndAlign(
+  reference: THREE.Vector2[],
+  toSubdivide: THREE.Vector2[],
+  targetCount: number
+): THREE.Vector2[] {
+  const n = toSubdivide.length
+  if (n === 0) return []
+
+  // If no subdivision needed, just align
+  if (targetCount <= n) {
+    const subdivided = subdivideToCount(toSubdivide, targetCount)
+    const rotation = findBestRotation(reference, subdivided)
+    return rotateVertices(subdivided, rotation)
+  }
+
+  let bestResult: THREE.Vector2[] = []
+  let bestDistance = Infinity
+
+  // Try all starting rotations for subdivision
+  // This changes where interpolated vertices are placed
+  for (let startRot = 0; startRot < n; startRot++) {
+    // Rotate input before subdivision
+    const rotatedInput = rotateVertices(toSubdivide, startRot)
+    // Subdivide
+    const subdivided = subdivideToCount(rotatedInput, targetCount)
+    // Find best alignment rotation
+    const alignRot = findBestRotation(reference, subdivided)
+    const aligned = rotateVertices(subdivided, alignRot)
+
+    // Calculate total squared distance
+    let dist = 0
+    for (let i = 0; i < targetCount; i++) {
+      dist += reference[i].distanceToSquared(aligned[i])
+    }
+
+    if (dist < bestDistance) {
+      bestDistance = dist
+      bestResult = aligned
+    }
+  }
+
+  return bestResult
+}
+
+/**
+ * Subdivide a polygon to reach targetCount vertices by adding interpolated points.
+ * PRESERVES all original vertices - only adds new ones between them.
+ * New vertices are distributed proportionally to edge lengths.
+ *
+ * @param vertices Original vertices (will all be preserved)
+ * @param targetCount Desired vertex count (must be >= vertices.length)
+ * @returns New array with all originals plus interpolated vertices
+ */
+export function subdivideToCount(
+  vertices: THREE.Vector2[],
+  targetCount: number
+): THREE.Vector2[] {
+  const n = vertices.length
+  if (n === 0) return []
+  if (targetCount <= n) {
+    // No subdivision needed, return clones
+    return vertices.map(v => v.clone())
+  }
+
+  const toAdd = targetCount - n
+
+  // Compute edge lengths
+  const edgeLengths: number[] = []
+  let totalLength = 0
+  for (let i = 0; i < n; i++) {
+    const len = vertices[i].distanceTo(vertices[(i + 1) % n])
+    edgeLengths.push(len)
+    totalLength += len
+  }
+
+  // Distribute extra vertices proportionally to edge lengths
+  // Use fractional accumulation for better distribution
+  const addPerEdge: number[] = new Array(n).fill(0)
+  let accumulated = 0
+
+  for (let i = 0; i < n; i++) {
+    const fraction = edgeLengths[i] / totalLength
+    const ideal = toAdd * fraction + accumulated
+    const actual = Math.round(ideal)
+    addPerEdge[i] = actual - Math.round(accumulated)
+    accumulated = ideal
+  }
+
+  // Fix any rounding errors - adjust the longest edge
+  const currentTotal = addPerEdge.reduce((a, b) => a + b, 0)
+  if (currentTotal !== toAdd) {
+    const longestEdgeIdx = edgeLengths.indexOf(Math.max(...edgeLengths))
+    addPerEdge[longestEdgeIdx] += toAdd - currentTotal
+  }
+
+  // Build result: original vertex, then interpolated vertices for each edge
+  const result: THREE.Vector2[] = []
+  for (let i = 0; i < n; i++) {
+    result.push(vertices[i].clone()) // Original vertex preserved
+
+    const numToAdd = addPerEdge[i]
+    if (numToAdd > 0) {
+      const next = vertices[(i + 1) % n]
+      for (let j = 1; j <= numToAdd; j++) {
+        const t = j / (numToAdd + 1)
+        result.push(new THREE.Vector2().lerpVectors(vertices[i], next, t))
+      }
+    }
+  }
+
+  return result
+}
+
+/**
  * Resample a closed polygon to have exactly targetCount vertices,
  * distributed uniformly by arc length.
+ * WARNING: This does NOT preserve original vertex positions!
  */
 export function resampleByArcLength(
   vertices: THREE.Vector2[],
