@@ -7,7 +7,7 @@ CAD-like tool to create, visualize and interactively edit "lofted" shapes in thr
 ### Creating a loft
 
 - The user sketches two or more 2D profiles.
-- Each profile is a closed non-crossing polygon with vertices and straight lines between them.
+- Each profile is a closed non-crossing polygon with vertices and line segments between them.
 - Each profile might contain a different number of vertices.
 - The profiles can be positioned in 3D space, but they all must be parallel to each other.
 - When the "loft" button is pressed a closed 3D shape is created based on the profiles.
@@ -81,18 +81,52 @@ src/
 │   ├── SketchPlane.ts           # Sketch positioned at a height in 3D
 │   ├── PlaneSelector.ts         # Hover/click plane selection
 │   ├── PlaneDragger.ts          # Drag to move/create/delete planes
-│   └── Loft.ts                  # 3D surface connecting sketch planes
+│   └── Loft.ts                  # Renders mesh faces (quads/triangles) from LoftableModel
 │
 ├── loft/
-│   ├── LoftAlgorithms.ts        # Algorithm registry (register/get by name)
-│   ├── makeLoftable.ts          # Entry point: makeLoftable(planes, algorithm?)
-│   ├── UniformResampleAlgorithm.ts   # Simple arc-length resampling
-│   └── AnchorResampleAlgorithm.ts    # Anchor-based chunk resampling
+│   ├── LoftAlgorithm.ts         # Algorithm interface & registry
+│   ├── LoftableModel.ts         # Model with segments containing mesh faces
+│   └── PerimeterWalkAlgorithm.ts # Perimeter-walk loft algorithm (see below)
+│
+├── ui/
+│   ├── MainToolbar.ts           # 3D viewport toolbar (planes, walls, roof, wireframe, algorithm)
+│   └── SketchToolbar.ts         # 2D viewport toolbar (orientation, shape presets)
 │
 └── util/
-    ├── Geometry.ts              # Polygon math (area, winding, resampling, intersection)
+    ├── Geometry.ts              # Polygon math (area, winding, triangulation, intersection)
+    ├── Geometry.test.ts         # Unit tests for Geometry
     ├── Bounds.ts                # 2D axis-aligned bounding box
     ├── GridHelper.ts            # Grid line rendering
     ├── HelpBar.ts               # Legacy help bar (deprecated)
     └── HelpPanel.ts             # Keyboard shortcut help overlay
 ```
+
+## Loft Algorithm
+
+The loft algorithm connects two 2D polygon loops into a 3D mesh of quads (and occasionally
+triangles). The interface is:
+
+```typescript
+type LoftAlgorithm = (
+  loopA: Vector2[], heightA: number,
+  loopB: Vector2[], heightB: number
+) => { faces: LoftFace[] }
+```
+
+### Perimeter Walk Algorithm
+
+The current algorithm (`PerimeterWalkAlgorithm.ts`) works by "walking" both polygon
+perimeters simultaneously, parameterized by arc length:
+
+1. **Parameterize** both loops by cumulative perimeter distance, normalized to [0, 1]
+2. **Walk** both loops together, starting at vertex 0 on each
+3. At each step, compare the parameter of the next vertex on each loop:
+   - **Case 1 (Quad):** Both loops reach their next vertex at the same parameter → create a quad, advance both
+   - **Case 2 (Subdivide B):** A's next vertex comes first → interpolate a point on B's edge, create quad, advance A only
+   - **Case 3 (Subdivide A):** B's next vertex comes first → interpolate a point on A's edge, create quad, advance B only
+
+Key properties:
+- Produces mostly quads (good for rendering and further subdivision)
+- Handles loops with different vertex counts
+- Preserves original polygon shapes exactly (no resampling/distortion)
+- Vertices are connected based on relative position along perimeter

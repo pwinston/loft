@@ -1,4 +1,8 @@
 import type { WireframeMode } from '../3d/Loft'
+import { getAlgorithmNames } from '../loft/LoftAlgorithm'
+import { LOFT } from '../constants'
+
+export type LoftAlgorithmName = string
 
 /**
  * Main toolbar for controlling visibility of planes, walls, roof, and wireframe mode.
@@ -10,15 +14,26 @@ export class MainToolbar {
     walls: false,
     roof: false,
   }
+  private currentAlgorithm: LoftAlgorithmName = LOFT.DEFAULT_ALGORITHM
 
   private onPlanesChange?: (visible: boolean) => void
   private onWallsChange?: (visible: boolean) => void
   private onRoofChange?: (visible: boolean) => void
   private onWireframeChange?: (mode: WireframeMode) => void
+  private onAlgorithmChange?: (name: LoftAlgorithmName) => void
 
   constructor(container: HTMLElement) {
     this.element = document.createElement('div')
     this.element.className = 'main-toolbar'
+    const algorithmButtons = getAlgorithmNames()
+      .map(name => {
+        // Map algorithm names to display labels
+        const label = name === 'perimeter-walk' ? 'Perimeter' : name
+        const active = name === this.currentAlgorithm ? ' class="active"' : ''
+        return `<button data-algo="${name}"${active}>${label}</button>`
+      })
+      .join('\n        ')
+
     this.element.innerHTML = `
       <div class="toolbar-section">
         <button data-toggle="planes" class="toggle active">Planes</button>
@@ -30,6 +45,10 @@ export class MainToolbar {
         <button data-wire="off" class="active">Off</button>
         <button data-wire="triangles">Tri</button>
         <button data-wire="quads">Quad</button>
+      </div>
+      <div class="toolbar-section">
+        <span class="toolbar-label">Algorithm</span>
+        ${algorithmButtons}
       </div>
     `
     container.appendChild(this.element)
@@ -52,6 +71,8 @@ export class MainToolbar {
       }
     } else if (target.dataset.wire) {
       this.setWireframeMode(target.dataset.wire as WireframeMode)
+    } else if (target.dataset.algo) {
+      this.setAlgorithm(target.dataset.algo)
     }
   }
 
@@ -84,6 +105,13 @@ export class MainToolbar {
     this.onWireframeChange?.(mode)
   }
 
+  setAlgorithm(name: LoftAlgorithmName): void {
+    this.currentAlgorithm = name
+    this.element.querySelectorAll('[data-algo]').forEach(btn => btn.classList.remove('active'))
+    this.element.querySelector(`[data-algo="${name}"]`)?.classList.add('active')
+    this.onAlgorithmChange?.(name)
+  }
+
   /**
    * Reset toolbar to default state
    */
@@ -92,6 +120,7 @@ export class MainToolbar {
     this.setWallsVisible(false)
     this.setRoofVisible(false)
     this.setWireframeMode('off')
+    this.setAlgorithm(LOFT.DEFAULT_ALGORITHM)
   }
 
   setOnPlanesChange(callback: (visible: boolean) => void): void {
@@ -110,10 +139,21 @@ export class MainToolbar {
     this.onWireframeChange = callback
   }
 
+  setOnAlgorithmChange(callback: (name: LoftAlgorithmName) => void): void {
+    this.onAlgorithmChange = callback
+  }
+
   /**
    * Check if roof toggle is enabled
    */
   isRoofEnabled(): boolean {
     return this.toggleState.roof
+  }
+
+  /**
+   * Get current algorithm name
+   */
+  getAlgorithm(): LoftAlgorithmName {
+    return this.currentAlgorithm
   }
 }

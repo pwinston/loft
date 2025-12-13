@@ -1,36 +1,40 @@
+/**
+ * LoftableModel.ts
+ *
+ * Represents a lofted shape as a collection of segments,
+ * where each segment contains the mesh faces connecting two planes.
+ */
+
 import * as THREE from 'three'
 import { SketchPlane } from '../3d/SketchPlane'
-import { getLoftAlgorithm } from './LoftAlgorithms'
+import { getLoftAlgorithm } from './LoftAlgorithm'
+import type { LoftFace } from './LoftAlgorithm'
 import { LOFT } from '../constants'
 
 // Import algorithms to register them
-import './AnchorResampleAlgorithm'
-import './UniformResampleAlgorithm'
+import './PerimeterWalkAlgorithm'
 
 /**
- * A single floor-to-floor segment with matched vertex arrays.
- * Both vertex arrays have the same count, optimized for this specific pair.
+ * A single floor-to-floor segment containing mesh faces.
  */
 export class LoftSegment {
+  /** Bottom plane reference */
   bottomPlane: SketchPlane
+
+  /** Top plane reference */
   topPlane: SketchPlane
-  bottomVertices: THREE.Vector2[]
-  topVertices: THREE.Vector2[]
+
+  /** Mesh faces (quads and triangles) connecting the two planes */
+  faces: LoftFace[]
 
   constructor(
     bottomPlane: SketchPlane,
     topPlane: SketchPlane,
-    bottomVertices: THREE.Vector2[],
-    topVertices: THREE.Vector2[]
+    faces: LoftFace[]
   ) {
     this.bottomPlane = bottomPlane
     this.topPlane = topPlane
-    this.bottomVertices = bottomVertices
-    this.topVertices = topVertices
-  }
-
-  getVertexCount(): number {
-    return this.bottomVertices.length
+    this.faces = faces
   }
 
   getBottomHeight(): number {
@@ -44,7 +48,6 @@ export class LoftSegment {
 
 /**
  * A loftable model consisting of segments between adjacent planes.
- * Each segment can have its own vertex count, optimized for that specific pair.
  */
 export class LoftableModel {
   segments: LoftSegment[]
@@ -55,35 +58,42 @@ export class LoftableModel {
 
   /**
    * Create a LoftableModel from an array of sketch planes.
-   * Uses the specified algorithm (or default) to match vertices pairwise.
+   * Uses the specified algorithm to generate mesh faces for each segment.
    */
   static fromPlanes(planes: SketchPlane[], algorithmName?: string): LoftableModel {
     if (planes.length < 2) {
       return new LoftableModel([])
     }
 
-    const name = algorithmName ?? LOFT.DEFAULT_ALGORITHM ?? 'uniform'
+    // Sort planes by height
+    const sortedPlanes = [...planes].sort((a, b) => a.getHeight() - b.getHeight())
+
+    const name = algorithmName ?? LOFT.DEFAULT_ALGORITHM ?? 'perimeter-walk'
     const algorithm = getLoftAlgorithm(name)
 
     if (!algorithm) {
-      console.warn(`Unknown loft algorithm: ${name}, using uniform`)
-      const fallback = getLoftAlgorithm('uniform')
+      console.warn(`Unknown loft algorithm: ${name}, using perimeter-walk`)
+      const fallback = getLoftAlgorithm('perimeter-walk')
       if (!fallback) {
         throw new Error('No loft algorithms registered')
       }
-      return LoftableModel.buildPairwise(planes, fallback)
+      return LoftableModel.buildSegments(sortedPlanes, fallback)
     }
 
-    return LoftableModel.buildPairwise(planes, algorithm)
+    return LoftableModel.buildSegments(sortedPlanes, algorithm)
   }
 
   /**
    * Build segments pairwise using the given algorithm.
-   * Each pair of adjacent planes gets its own optimized vertex count.
    */
-  private static buildPairwise(
+  private static buildSegments(
     planes: SketchPlane[],
-    algorithm: (sketches: import('../2d/Sketch').Sketch[]) => THREE.Vector2[][]
+    algorithm: (
+      loopA: THREE.Vector2[],
+      heightA: number,
+      loopB: THREE.Vector2[],
+      heightB: number
+    ) => { faces: LoftFace[] }
   ): LoftableModel {
     const segments: LoftSegment[] = []
 
@@ -91,13 +101,14 @@ export class LoftableModel {
       const bottomPlane = planes[i]
       const topPlane = planes[i + 1]
 
-      // Process just this pair
-      const [bottomVerts, topVerts] = algorithm([
-        bottomPlane.getSketch(),
-        topPlane.getSketch()
-      ])
+      const result = algorithm(
+        bottomPlane.getSketch().getVertices(),
+        bottomPlane.getHeight(),
+        topPlane.getSketch().getVertices(),
+        topPlane.getHeight()
+      )
 
-      segments.push(new LoftSegment(bottomPlane, topPlane, bottomVerts, topVerts))
+      segments.push(new LoftSegment(bottomPlane, topPlane, result.faces))
     }
 
     return new LoftableModel(segments)
@@ -109,7 +120,8 @@ export class LoftableModel {
    */
   getRoofVertices(): THREE.Vector2[] | null {
     if (this.segments.length === 0) return null
-    return this.segments[this.segments.length - 1].topVertices
+    const topPlane = this.segments[this.segments.length - 1].topPlane
+    return topPlane.getSketch().getVertices()
   }
 
   /**

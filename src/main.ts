@@ -40,9 +40,13 @@ sketchPlanes.forEach(plane => {
 const loft = new Loft()
 viewport3d.add(loft.getGroup())
 
+// Create main toolbar (needed by rebuildLoft and updateRoofVisibility)
+const mainToolbar = new MainToolbar(container3d)
+
 // Helper function to rebuild loft with vertex resampling
 function rebuildLoft(): void {
-  const model = LoftableModel.fromPlanes(sketchPlanes)
+  const algorithmName = mainToolbar.getAlgorithm()
+  const model = LoftableModel.fromPlanes(sketchPlanes, algorithmName)
   loft.rebuildFromModel(model)
 }
 
@@ -136,9 +140,6 @@ new HelpPanel([
   { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
-// Create main toolbar
-const mainToolbar = new MainToolbar(container3d)
-
 // Wire up toolbar callbacks
 mainToolbar.setOnPlanesChange((visible) => {
   sketchPlanes.forEach(plane => plane.getGroup().visible = visible)
@@ -158,6 +159,11 @@ mainToolbar.setOnRoofChange(() => {
 
 mainToolbar.setOnWireframeChange((mode) => {
   loft.setWireframeMode(mode)
+})
+
+mainToolbar.setOnAlgorithmChange((name) => {
+  console.log('Algorithm changed to:', name)
+  rebuildLoft()
 })
 
 // Reset to a single 1x1 square plane at ground level
