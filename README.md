@@ -4,6 +4,8 @@ CAD-like tool to create, visualize and interactively edit "lofted" shapes in thr
 
 ## Specification
 
+Three steps: creating the loft, visualizing it, and editing it.
+
 ### Creating a loft
 
 - The user sketches two or more 2D profiles.
@@ -130,3 +132,34 @@ Key properties:
 - Handles loops with different vertex counts
 - Preserves original polygon shapes exactly (no resampling/distortion)
 - Vertices are connected based on relative position along perimeter
+
+### Per-Edge Adaptive Subdivision
+
+When connecting loops with different vertex counts, some edges on one loop may "span"
+multiple vertices from the other loop. Without intervention, this creates ugly triangle
+fans radiating from single vertices.
+
+The algorithm uses **per-edge adaptive subdivision**: for each edge, it counts how many
+vertices from the other loop fall within that edge's parameter range. If an edge spans
+N ≥ 2 vertices, N-1 intermediate points are inserted on that edge.
+
+Example: Square edge spanning 5 circle vertices
+- Edge parameter range: [0.0, 0.25] (one side of square)
+- Circle vertices in range: 5 (at params 0.0, 0.05, 0.10, 0.15, 0.20)
+- Insert 4 intermediate points on the square edge
+- Result: 5 quads instead of a fan of 5 triangles
+
+This approach is smarter than global subdivision because:
+- Only edges that need it get subdivided
+- Works correctly even with irregular polygons (dense verts in some areas, sparse in others)
+- Produces balanced geometry regardless of total vertex count ratio
+
+**Future: Per-segment options**
+
+The subdivision behavior can be customized with options:
+- `threshold`: minimum vertices to trigger subdivision (default: 2)
+- `maxPerEdge`: cap on intermediate points per edge (default: unlimited)
+- `enabled`: turn subdivision on/off entirely
+
+These could be exposed per-segment for multi-floor buildings where different transitions
+need different tessellation density.

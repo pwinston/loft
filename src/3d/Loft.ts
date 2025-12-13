@@ -11,7 +11,7 @@ import { triangulatePolygon } from '../util/Geometry'
 import { LoftableModel } from '../loft/LoftableModel'
 import type { LoftFace } from '../loft/LoftAlgorithm'
 
-export type WireframeMode = 'off' | 'normal' | 'tris'
+export type WireframeMode = 'off' | 'on' | 'tris'
 
 /**
  * Creates a 3D mesh by lofting through sketch planes at different heights.
@@ -93,7 +93,7 @@ export class Loft {
       this.roofMesh.visible = this.roofVisible
     }
     if (this.wireframeQuads) {
-      this.wireframeQuads.visible = this.wireframeMode === 'normal'
+      this.wireframeQuads.visible = this.wireframeMode === 'on' || this.wireframeMode === 'tris'
     }
     if (this.wireframeTris) {
       this.wireframeTris.visible = this.wireframeMode === 'tris'
@@ -135,6 +135,9 @@ export class Loft {
       color: LOFT.SOLID_COLOR,
       side: THREE.DoubleSide,
       flatShading: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     })
     this.mesh = new THREE.Mesh(wallGeometry, material)
     this.group.add(this.mesh)
@@ -153,9 +156,15 @@ export class Loft {
     this.wireframeQuads = new THREE.LineSegments(quadWireGeometry, wireMaterial)
     this.group.add(this.wireframeQuads)
 
-    // Triangle wireframe (all edges including diagonals)
-    const triWireGeometry = new THREE.WireframeGeometry(wallGeometry)
-    this.wireframeTris = new THREE.LineSegments(triWireGeometry, wireMaterial.clone())
+    // Diagonal wireframe (only the triangulation edges that split quads)
+    const diagWireGeometry = this.buildDiagonalWireframeFromFaces(allFaces)
+    const diagMaterial = new THREE.LineDashedMaterial({
+      color: LOFT.DIAGONAL_WIRE_COLOR,
+      dashSize: 0.3,
+      gapSize: 0.15,
+    })
+    this.wireframeTris = new THREE.LineSegments(diagWireGeometry, diagMaterial)
+    this.wireframeTris.computeLineDistances() // Required for dashed lines
     this.group.add(this.wireframeTris)
 
     this.updateVisibility()
@@ -202,6 +211,29 @@ export class Loft {
     geometry.setIndex(indices)
     geometry.computeVertexNormals()
 
+    return geometry
+  }
+
+  /**
+   * Build wireframe showing only the diagonal edges that split quads into triangles.
+   */
+  private buildDiagonalWireframeFromFaces(faces: LoftFace[]): THREE.BufferGeometry {
+    const linePositions: number[] = []
+
+    for (const face of faces) {
+      const verts = face.vertices
+      // Only quads have a diagonal - triangles don't need splitting
+      if (verts.length === 4) {
+        // The diagonal goes from vertex 0 to vertex 2 (see buildGeometryFromFaces)
+        const v1 = verts[0]
+        const v2 = verts[2]
+        linePositions.push(v1.x, v1.z, -v1.y)
+        linePositions.push(v2.x, v2.z, -v2.y)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
     return geometry
   }
 

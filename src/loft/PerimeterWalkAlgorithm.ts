@@ -176,16 +176,52 @@ class FaceBuilder {
   }
 
   /**
-   * Add a triangle face.
-   * Vertices in winding order for outward-facing normal.
+   * Add a triangle where A advances but B stays at the same vertex.
+   * This is the "collapse" case - two A vertices connect to one B vertex.
+   *
+   *    a0 -------- a1
+   *     \        /
+   *      \  TRI /
+   *       \    /
+   *        \  /
+   *         b0
    */
-  addTriangle(
-    p0: THREE.Vector3,
-    p1: THREE.Vector3,
-    p2: THREE.Vector3
+  addTriangleCollapseB(
+    a0: THREE.Vector2,
+    a1: THREE.Vector2,
+    b0: THREE.Vector2
   ): void {
     this.faces.push({
-      vertices: [p0, p1, p2]
+      vertices: [
+        this.toPoint3D_A(a0),
+        this.toPoint3D_A(a1),
+        this.toPoint3D_B(b0)
+      ]
+    })
+  }
+
+  /**
+   * Add a triangle where B advances but A stays at the same vertex.
+   * This is the "collapse" case - two B vertices connect to one A vertex.
+   *
+   *         a0
+   *        /  \
+   *       /    \
+   *      /  TRI \
+   *     /        \
+   *    b0 -------- b1
+   */
+  addTriangleCollapseA(
+    a0: THREE.Vector2,
+    b0: THREE.Vector2,
+    b1: THREE.Vector2
+  ): void {
+    this.faces.push({
+      vertices: [
+        this.toPoint3D_A(a0),
+        this.toPoint3D_B(b1),
+        this.toPoint3D_B(b0)
+      ]
     })
   }
 
@@ -198,6 +234,60 @@ class FaceBuilder {
 }
 
 // ============================================================================
+// HELPER: Look-ahead Merge Detection
+// ============================================================================
+
+/**
+ * Check if we can merge an A-advance step with a following B-advance step into a quad.
+ *
+ * Scenario without merging:
+ * - Step N: A advances, B stays → creates triangle (a0, a1, b0)
+ * - Step N+1: B advances, A stays → creates triangle (a1, b0, b1)
+ *
+ * These two triangles share edge (a1, b0) and together form quad (a0, a1, b1, b0).
+ * By detecting this pattern ahead of time, we can emit one quad instead of two triangles.
+ *
+ * We can merge if, after advancing A, the NEXT vertex on A comes AFTER
+ * the next vertex on B (by parameter), meaning the following step would be B advancing.
+ */
+function canMergeIntoQuadWhenAAdvances(
+  loopA: ParameterizedLoop,
+  loopB: ParameterizedLoop,
+  iA: number,
+  iB: number,
+  tNextB: number,
+  EPS: number
+): boolean {
+  // After advancing A to iA+1, we need another A vertex to compare (at iA+2)
+  // and B must not be exhausted
+  if (iA + 1 >= loopA.count || iB >= loopB.count) return false
+
+  // After A advances, tNextA becomes param(iA+2) while tNextB stays the same
+  const tNextNextA = loopA.param(iA + 2)
+
+  // If A's next-next comes after B's next, the following step will be B advancing
+  return tNextNextA > tNextB + EPS
+}
+
+/**
+ * Check if we can merge a B-advance step with a following A-advance step into a quad.
+ * (Mirror of canMergeIntoQuadWhenAAdvances)
+ */
+function canMergeIntoQuadWhenBAdvances(
+  loopA: ParameterizedLoop,
+  loopB: ParameterizedLoop,
+  iA: number,
+  iB: number,
+  tNextA: number,
+  EPS: number
+): boolean {
+  if (iA >= loopA.count || iB + 1 >= loopB.count) return false
+
+  const tNextNextB = loopB.param(iB + 2)
+  return tNextNextB > tNextA + EPS
+}
+
+// ============================================================================
 // MAIN ALGORITHM: Perimeter Walk
 // ============================================================================
 
@@ -206,6 +296,8 @@ class FaceBuilder {
  *
  * At each step we compare the parameter of the next vertex on each loop
  * and advance the one that comes first (or both if equal).
+ *
+ * Uses look-ahead merging to combine adjacent triangles into quads when possible.
  */
 function walkPerimeters(
   loopA: ParameterizedLoop,
@@ -233,15 +325,15 @@ function walkPerimeters(
 
     if (iA >= nA) {
       // Loop A is done, only advance B
+      // Create triangle collapsing to A's last vertex (a0)
       const b1 = loopB.vertex(iB + 1)
-      const a1 = loopA.interpolate(nA - 1, tNextB) // Stay on last edge of A
-      builder.addQuad(a0, a1, b0, b1)
+      builder.addTriangleCollapseA(a0, b0, b1)
       iB++
     } else if (iB >= nB) {
       // Loop B is done, only advance A
+      // Create triangle collapsing to B's last vertex (b0)
       const a1 = loopA.vertex(iA + 1)
-      const b1 = loopB.interpolate(nB - 1, tNextA) // Stay on last edge of B
-      builder.addQuad(a0, a1, b0, b1)
+      builder.addTriangleCollapseB(a0, a1, b0)
       iA++
     } else if (Math.abs(tNextA - tNextB) < EPS) {
       // CASE 1: Both reach their next vertex at the same parameter
@@ -253,18 +345,36 @@ function walkPerimeters(
       iB++
     } else if (tNextA < tNextB) {
       // CASE 2: A's next vertex comes before B's
-      // Interpolate a point on B's current edge, advance A only
       const a1 = loopA.vertex(iA + 1)
-      const b1 = loopB.interpolate(iB, tNextA)
-      builder.addQuad(a0, a1, b0, b1)
-      iA++
+
+      // Look ahead: can we merge with a following B-advance into a quad?
+      if (canMergeIntoQuadWhenAAdvances(loopA, loopB, iA, iB, tNextB, EPS)) {
+        // Merge two triangles into one quad
+        const b1 = loopB.vertex(iB + 1)
+        builder.addQuad(a0, a1, b0, b1)
+        iA++
+        iB++
+      } else {
+        // Just create triangle collapsing to b0
+        builder.addTriangleCollapseB(a0, a1, b0)
+        iA++
+      }
     } else {
       // CASE 3: B's next vertex comes before A's
-      // Interpolate a point on A's current edge, advance B only
-      const a1 = loopA.interpolate(iA, tNextB)
       const b1 = loopB.vertex(iB + 1)
-      builder.addQuad(a0, a1, b0, b1)
-      iB++
+
+      // Look ahead: can we merge with a following A-advance into a quad?
+      if (canMergeIntoQuadWhenBAdvances(loopA, loopB, iA, iB, tNextA, EPS)) {
+        // Merge two triangles into one quad
+        const a1 = loopA.vertex(iA + 1)
+        builder.addQuad(a0, a1, b0, b1)
+        iA++
+        iB++
+      } else {
+        // Just create triangle collapsing to a0
+        builder.addTriangleCollapseA(a0, b0, b1)
+        iB++
+      }
     }
   }
 }
@@ -317,6 +427,123 @@ function alignLoopStarts(
 }
 
 // ============================================================================
+// HELPER: Per-Edge Adaptive Subdivision
+// ============================================================================
+
+/**
+ * Options for adaptive subdivision behavior.
+ * These could be exposed per-segment in the future.
+ */
+export interface AdaptiveSubdivisionOptions {
+  /** Minimum vertices an edge must span to trigger subdivision (default: 2) */
+  threshold: number
+  /** Maximum intermediate points to insert per edge (default: unlimited) */
+  maxPerEdge: number
+  /** Enable/disable subdivision entirely (default: true) */
+  enabled: boolean
+}
+
+const DEFAULT_SUBDIVISION_OPTIONS: AdaptiveSubdivisionOptions = {
+  threshold: 2,
+  maxPerEdge: Infinity,
+  enabled: true,
+}
+
+/**
+ * Count how many vertices from otherLoop have parameters within the given range.
+ * Handles wrap-around at t=1.0.
+ */
+function countVerticesInParamRange(
+  otherLoop: ParameterizedLoop,
+  t0: number,
+  t1: number
+): number {
+  let count = 0
+  const isWrapAround = t1 < t0 // Edge crosses the t=1.0 boundary
+
+  for (let i = 0; i < otherLoop.count; i++) {
+    const t = otherLoop.param(i)
+    if (isWrapAround) {
+      // Range wraps: [t0, 1.0) or [0, t1)
+      if (t >= t0 || t < t1) count++
+    } else {
+      // Normal range: [t0, t1)
+      if (t >= t0 && t < t1) count++
+    }
+  }
+
+  return count
+}
+
+/**
+ * Adaptively subdivide a loop based on how many vertices from the other loop
+ * fall within each edge's parameter range.
+ *
+ * For each edge that spans N vertices from the other loop (where N > threshold),
+ * insert N-1 intermediate points to ensure we get quads instead of triangle fans.
+ */
+function subdivideLoopAdaptively(
+  loop: ParameterizedLoop,
+  otherLoop: ParameterizedLoop,
+  options: AdaptiveSubdivisionOptions = DEFAULT_SUBDIVISION_OPTIONS
+): THREE.Vector2[] {
+  if (!options.enabled) {
+    return [...loop.vertices]
+  }
+
+  const result: THREE.Vector2[] = []
+
+  for (let i = 0; i < loop.count; i++) {
+    // Add original vertex
+    result.push(loop.vertex(i))
+
+    // Edge from i to i+1
+    const t0 = loop.param(i)
+    const t1 = loop.param(i + 1)
+
+    // Count other loop vertices in this edge's parameter range
+    const vertsInRange = countVerticesInParamRange(otherLoop, t0, t1)
+
+    // If edge spans more vertices than threshold, insert intermediate points
+    if (vertsInRange >= options.threshold) {
+      const numToInsert = Math.min(vertsInRange - 1, options.maxPerEdge)
+
+      for (let j = 1; j <= numToInsert; j++) {
+        // Interpolate evenly along the edge
+        const fraction = j / (numToInsert + 1)
+        const t = t0 + (t1 - t0) * fraction
+        result.push(loop.interpolate(i, t))
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Balance two loops by adaptively subdividing edges that span multiple
+ * vertices from the other loop.
+ *
+ * Unlike global subdivision (which doubles all vertices), this only adds
+ * vertices where needed - on edges that would otherwise create triangle fans.
+ */
+function adaptivelyBalanceLoops(
+  loopA: THREE.Vector2[],
+  loopB: THREE.Vector2[],
+  options: AdaptiveSubdivisionOptions = DEFAULT_SUBDIVISION_OPTIONS
+): { loopA: THREE.Vector2[]; loopB: THREE.Vector2[] } {
+  // First pass: parameterize both loops
+  const paramA = new ParameterizedLoop(loopA)
+  const paramB = new ParameterizedLoop(loopB)
+
+  // Second pass: subdivide each loop based on the other
+  const newLoopA = subdivideLoopAdaptively(paramA, paramB, options)
+  const newLoopB = subdivideLoopAdaptively(paramB, paramA, options)
+
+  return { loopA: newLoopA, loopB: newLoopB }
+}
+
+// ============================================================================
 // ALGORITHM ENTRY POINT
 // ============================================================================
 
@@ -331,6 +558,8 @@ function alignLoopStarts(
  * - Handles loops with different vertex counts
  * - Preserves the shape of both loops (no resampling/distortion)
  * - Vertices are connected based on their relative position along the perimeter
+ * - Per-edge adaptive subdivision: edges spanning multiple other-loop vertices
+ *   get intermediate points to avoid triangle fans
  */
 function perimeterWalkAlgorithm(
   loopA: THREE.Vector2[],
@@ -344,8 +573,13 @@ function perimeterWalkAlgorithm(
   }
 
   // Normalize winding to CCW
-  const normalizedA = ensureWindingCCW(loopA)
-  const normalizedB = ensureWindingCCW(loopB)
+  let normalizedA = ensureWindingCCW(loopA)
+  let normalizedB = ensureWindingCCW(loopB)
+
+  // Adaptively subdivide edges that span multiple vertices from the other loop
+  const balanced = adaptivelyBalanceLoops(normalizedA, normalizedB)
+  normalizedA = balanced.loopA
+  normalizedB = balanced.loopB
 
   // Align loopB's start to be closest to loopA's start
   const alignedB = alignLoopStarts(normalizedA, normalizedB)
