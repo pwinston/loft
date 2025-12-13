@@ -79,3 +79,9 @@ revert it. For this project I'm using branches like this:
 3. Wireframe menu is now "On" or "Tris"
 4. Tris shown in another color and dashed
 ![](images/09.jpg)
+
+## Sweep select plus Scale and Rotate groups of vertices ([PR #10](https://github.com/pwinston/maru/pull/10))    
+1. New generic `EditorTool
+2. Two new tools: `SweepSelection` and `TransformTool`
+3. Scale and rotate using new on-screen `SelectionHandles` and helper `VertexTransform`
+![](images/10.jpg)
