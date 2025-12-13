@@ -86,12 +86,12 @@ src/
 │   └── Loft.ts                  # Renders mesh faces (quads/triangles) from LoftableModel
 │
 ├── loft/
-│   ├── LoftAlgorithm.ts         # Algorithm interface & registry
+│   ├── LoftAlgorithm.ts         # Types for loft faces and results
 │   ├── LoftableModel.ts         # Model with segments containing mesh faces
 │   └── PerimeterWalkAlgorithm.ts # Perimeter-walk loft algorithm (see below)
 │
 ├── ui/
-│   ├── MainToolbar.ts           # 3D viewport toolbar (planes, walls, roof, wireframe, algorithm)
+│   ├── MainToolbar.ts           # 3D viewport toolbar (planes, walls, roof, wireframe)
 │   └── SketchToolbar.ts         # 2D viewport toolbar (orientation, shape presets)
 │
 └── util/

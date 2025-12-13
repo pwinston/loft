@@ -61,7 +61,6 @@ export const LOFT = {
   SOLID_COLOR: 0x4488cc,
   WIRE_COLOR: 0xdddddd,  // Light gray wireframe for quad edges
   DIAGONAL_WIRE_COLOR: 0xff8844,  // Orange dashed for triangulation diagonals
-  DEFAULT_ALGORITHM: 'perimeter-walk' as string,
 }
 
 // Interaction thresholds

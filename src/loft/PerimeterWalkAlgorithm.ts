@@ -20,7 +20,6 @@
  */
 
 import * as THREE from 'three'
-import { registerLoftAlgorithm } from './LoftAlgorithm'
 import type { LoftFace, LoftResult } from './LoftAlgorithm'
 import { ensureWindingCCW } from '../util/Geometry'
 
@@ -595,8 +594,5 @@ function perimeterWalkAlgorithm(
 
   return { faces: builder.getFaces() }
 }
-
-// Register the algorithm
-registerLoftAlgorithm('perimeter-walk', perimeterWalkAlgorithm)
 
 export { perimeterWalkAlgorithm, ParameterizedLoop, FaceBuilder }

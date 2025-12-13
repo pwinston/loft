@@ -7,12 +7,8 @@
 
 import * as THREE from 'three'
 import { SketchPlane } from '../3d/SketchPlane'
-import { getLoftAlgorithm } from './LoftAlgorithm'
+import { perimeterWalkAlgorithm } from './PerimeterWalkAlgorithm'
 import type { LoftFace } from './LoftAlgorithm'
-import { LOFT } from '../constants'
-
-// Import algorithms to register them
-import './PerimeterWalkAlgorithm'
 
 /**
  * A single floor-to-floor segment containing mesh faces.
@@ -58,9 +54,8 @@ export class LoftableModel {
 
   /**
    * Create a LoftableModel from an array of sketch planes.
-   * Uses the specified algorithm to generate mesh faces for each segment.
    */
-  static fromPlanes(planes: SketchPlane[], algorithmName?: string): LoftableModel {
+  static fromPlanes(planes: SketchPlane[]): LoftableModel {
     if (planes.length < 2) {
       return new LoftableModel([])
     }
@@ -68,40 +63,13 @@ export class LoftableModel {
     // Sort planes by height
     const sortedPlanes = [...planes].sort((a, b) => a.getHeight() - b.getHeight())
 
-    const name = algorithmName ?? LOFT.DEFAULT_ALGORITHM ?? 'perimeter-walk'
-    const algorithm = getLoftAlgorithm(name)
-
-    if (!algorithm) {
-      console.warn(`Unknown loft algorithm: ${name}, using perimeter-walk`)
-      const fallback = getLoftAlgorithm('perimeter-walk')
-      if (!fallback) {
-        throw new Error('No loft algorithms registered')
-      }
-      return LoftableModel.buildSegments(sortedPlanes, fallback)
-    }
-
-    return LoftableModel.buildSegments(sortedPlanes, algorithm)
-  }
-
-  /**
-   * Build segments pairwise using the given algorithm.
-   */
-  private static buildSegments(
-    planes: SketchPlane[],
-    algorithm: (
-      loopA: THREE.Vector2[],
-      heightA: number,
-      loopB: THREE.Vector2[],
-      heightB: number
-    ) => { faces: LoftFace[] }
-  ): LoftableModel {
     const segments: LoftSegment[] = []
 
-    for (let i = 0; i < planes.length - 1; i++) {
-      const bottomPlane = planes[i]
-      const topPlane = planes[i + 1]
+    for (let i = 0; i < sortedPlanes.length - 1; i++) {
+      const bottomPlane = sortedPlanes[i]
+      const topPlane = sortedPlanes[i + 1]
 
-      const result = algorithm(
+      const result = perimeterWalkAlgorithm(
         bottomPlane.getSketch().getVertices(),
         bottomPlane.getHeight(),
         topPlane.getSketch().getVertices(),

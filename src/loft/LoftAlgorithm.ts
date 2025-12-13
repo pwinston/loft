@@ -44,29 +44,3 @@ export type LoftAlgorithm = (
   loopB: THREE.Vector2[],
   heightB: number
 ) => LoftResult
-
-/**
- * Registry of available loft algorithms.
- */
-const algorithms: Record<string, LoftAlgorithm> = {}
-
-/**
- * Register a loft algorithm by name.
- */
-export function registerLoftAlgorithm(name: string, fn: LoftAlgorithm): void {
-  algorithms[name] = fn
-}
-
-/**
- * Get a registered algorithm by name.
- */
-export function getLoftAlgorithm(name: string): LoftAlgorithm | undefined {
-  return algorithms[name]
-}
-
-/**
- * List all registered algorithm names.
- */
-export function getAlgorithmNames(): string[] {
-  return Object.keys(algorithms)
-}

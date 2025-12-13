@@ -43,10 +43,9 @@ viewport3d.add(loft.getGroup())
 // Create main toolbar (needed by rebuildLoft and updateRoofVisibility)
 const mainToolbar = new MainToolbar(container3d)
 
-// Helper function to rebuild loft with vertex resampling
+// Helper function to rebuild loft
 function rebuildLoft(): void {
-  const algorithmName = mainToolbar.getAlgorithm()
-  const model = LoftableModel.fromPlanes(sketchPlanes, algorithmName)
+  const model = LoftableModel.fromPlanes(sketchPlanes)
   loft.rebuildFromModel(model)
 }
 
@@ -161,10 +160,6 @@ mainToolbar.setOnWireframeChange((mode) => {
   loft.setWireframeMode(mode)
 })
 
-mainToolbar.setOnAlgorithmChange((name) => {
-  console.log('Algorithm changed to:', name)
-  rebuildLoft()
-})
 
 // Reset to a single 1x1 square plane at ground level
 function newModel(): void {
