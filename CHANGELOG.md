@@ -17,11 +17,6 @@ revert it. For this project I'm using branches like this:
 1. `dev` is rapid iteration with Claude Code.
 2. PRs into `main` only when well-understood and cleaned up.
 
-# Planning
-
-I created README.md and wrote my version of the spec/requirements. I used
-ChatGPT to discuss which libraries to use and what the general UI should look
-like. I added all decisions to the README.
 
 # PRs
 
