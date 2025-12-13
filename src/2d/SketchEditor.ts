@@ -132,6 +132,42 @@ export class SketchEditor {
     canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e))
     canvas.addEventListener('wheel', (e) => this.onWheel(e))
     canvas.addEventListener('contextmenu', (e) => e.preventDefault())
+
+    // ESC clears selection and cancels any active operation
+    window.addEventListener('keydown', (e) => this.onKeyDown(e))
+  }
+
+  /**
+   * Handle keyboard events
+   */
+  private onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.cancelAllOperations()
+      if (this.currentSketch) {
+        this.currentSketch.clearSelection()
+        this.updateSelectionHandles()
+      }
+    }
+  }
+
+  /**
+   * Cancel all active operations and reset state
+   */
+  private cancelAllOperations(): void {
+    // Clean up active tool
+    if (this.activeTool) {
+      this.activeTool.dispose()
+      this.activeTool = null
+    }
+
+    // Reset all drag/interaction state
+    this.draggedVertexIndex = null
+    this.isDeletingVertex = false
+    this.deletePreviewMarker.visible = false
+    this.isPanning = false
+    this.lastPanPosition = null
+    this.activeHandle = 'none'
+    this.container.style.cursor = 'default'
   }
 
   /**
@@ -263,7 +299,10 @@ export class SketchEditor {
    */
   private startSweepSelection(event: MouseEvent): void {
     if (!this.currentSketch) return
-    this.currentSketch.clearSelection()
+    // Shift key adds to selection, otherwise clear first
+    if (!event.shiftKey) {
+      this.currentSketch.clearSelection()
+    }
     this.activeTool = new SweepSelection(this.scene, this.getWorldPosition(event))
   }
 
@@ -468,6 +507,7 @@ export class SketchEditor {
    * Handle mouse up - stop dragging or panning, delete vertex if in delete mode
    */
   private onMouseUp(event: MouseEvent): void {
+    // Handle right-click (pan) release
     if (event.button === 2) {
       this.isPanning = false
       this.lastPanPosition = null
@@ -479,9 +519,6 @@ export class SketchEditor {
     if (this.activeTool) {
       const result = this.activeTool.onMouseUp(this.getWorldPosition(event))
       this.applyToolResult(result)
-      this.activeHandle = 'none'
-      this.container.style.cursor = 'default'
-      return
     }
 
     // Handle vertex deletion if we were in delete mode
@@ -491,10 +528,11 @@ export class SketchEditor {
       }
     }
 
-    // Clean up drag state
+    // ALWAYS clean up all drag/interaction state on mouse up
     this.draggedVertexIndex = null
     this.isDeletingVertex = false
     this.deletePreviewMarker.visible = false
+    this.activeHandle = 'none'
     this.container.style.cursor = 'default'
   }
 
