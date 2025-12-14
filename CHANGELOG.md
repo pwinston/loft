@@ -85,3 +85,8 @@ revert it. For this project I'm using branches like this:
 2. Two new tools: `SweepSelection` and `TransformTool`
 3. Scale and rotate using new on-screen `SelectionHandles` and helper `VertexTransform`
 ![](images/10.jpg)
+
+## File menu with Save/Load! ([PR #11](https://github.com/pwinston/maru/pull/11))    
+1. File menu with Save/Load options!
+2. Create App.ts as proper class instead of main.ts module vars.
+![](images/11.jpg)
