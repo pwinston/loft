@@ -522,6 +522,8 @@ button:focus-visible {
   font-style: italic;
   text-align: center;
   padding: 8px 0;
+}
+
 /* Version badge */
 .version-badge {
   position: absolute;
