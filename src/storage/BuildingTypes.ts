@@ -22,6 +22,8 @@ export interface BuildingData {
   name: string
   bounds: BoundsData
   planes: PlaneData[]
+  /** Lock state for each segment (optional for backwards compatibility) */
+  segmentLocked?: boolean[]
 }
 
 /**

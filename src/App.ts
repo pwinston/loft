@@ -12,6 +12,7 @@ import { createRegularPolygon } from './util/Geometry'
 import { FileMenu } from './ui/FileMenu'
 import { Minimap } from './ui/Minimap'
 import { BuildingSerializer } from './storage/BuildingSerializer'
+import { Model } from './model/Model'
 import type { BuildingData } from './storage/BuildingTypes'
 
 /**
@@ -35,7 +36,7 @@ export class App {
   private minimap: Minimap
 
   // State
-  private sketchPlanes: SketchPlane[] = []
+  private model: Model
 
   constructor(container3d: HTMLDivElement, container2d: HTMLDivElement) {
     this.container3d = container3d
@@ -45,9 +46,9 @@ export class App {
     this.viewport3d = new Viewport3D(container3d)
     this.sketchEditor = new SketchEditor(container2d)
 
-    // Create initial plane
-    this.sketchPlanes = [new SketchPlane(DEFAULT_BUILDING_SIZE, 0)]
-    this.sketchPlanes.forEach(plane => this.viewport3d.add(plane.getGroup()))
+    // Create initial model with one plane
+    this.model = new Model('untitled', [new SketchPlane(DEFAULT_BUILDING_SIZE, 0)])
+    this.model.planes.forEach(plane => this.viewport3d.add(plane.getGroup()))
 
     // Create loft
     this.loft = new Loft()
@@ -60,7 +61,7 @@ export class App {
     this.minimap = new Minimap(container2d)
 
     // Create plane selector
-    this.planeSelector = new PlaneSelector(this.viewport3d, this.sketchPlanes)
+    this.planeSelector = new PlaneSelector(this.viewport3d, this.model.planes)
 
     // Wire up all callbacks
     this.setupCallbacks()
@@ -80,7 +81,7 @@ export class App {
    */
   start(): void {
     // Select first plane
-    this.planeSelector.selectPlane(this.sketchPlanes[0])
+    this.planeSelector.selectPlane(this.model.planes[0])
 
     // Start animation loop
     this.animate()
@@ -103,7 +104,7 @@ export class App {
    * Export loft debug data to console and download as JSON
    */
   private exportLoftDebugData(): void {
-    const model = LoftableModel.fromPlanes(this.sketchPlanes)
+    const model = LoftableModel.fromPlanes(this.model.planes)
     const debugData = model.exportDebugData()
 
     // Log to console
@@ -143,9 +144,9 @@ export class App {
    */
   private rebuildLoft(): void {
     this.syncPlaneSizes()
-    const model = LoftableModel.fromPlanes(this.sketchPlanes)
+    const model = LoftableModel.fromPlanes(this.model.planes)
     this.loft.rebuildFromModel(model)
-    this.minimap.setPlaneCount(this.sketchPlanes.length)
+    this.minimap.setPlaneCount(this.model.planes.length)
   }
 
   /**
@@ -160,13 +161,13 @@ export class App {
    * Make all planes the same size (the max bounds across all planes)
    */
   private syncPlaneSizes(): void {
-    if (this.sketchPlanes.length === 0) return
+    if (this.model.planes.length === 0) return
 
     // Calculate max bounds across all planes
     let minX = Infinity, maxX = -Infinity
     let minY = Infinity, maxY = -Infinity
 
-    for (const plane of this.sketchPlanes) {
+    for (const plane of this.model.planes) {
       const bounds = plane.getBounds()
       minX = Math.min(minX, bounds.minX)
       maxX = Math.max(maxX, bounds.maxX)
@@ -177,7 +178,7 @@ export class App {
     const sharedBounds: PlaneBounds = { minX, maxX, minY, maxY }
 
     // Apply to all planes
-    for (const plane of this.sketchPlanes) {
+    for (const plane of this.model.planes) {
       plane.setSharedBounds(sharedBounds)
     }
   }
@@ -186,8 +187,8 @@ export class App {
    * Get the top plane (highest height)
    */
   private getTopPlane(): SketchPlane | null {
-    if (this.sketchPlanes.length === 0) return null
-    return this.sketchPlanes.reduce((top, plane) =>
+    if (this.model.planes.length === 0) return null
+    return this.model.planes.reduce((top, plane) =>
       plane.getHeight() > top.getHeight() ? plane : top
     )
   }
@@ -208,19 +209,17 @@ export class App {
    * Reset to a single square plane at ground level
    */
   private newModel(): void {
-    // Remove all existing planes
-    this.sketchPlanes.forEach(plane => this.viewport3d.remove(plane.getGroup()))
+    // Remove all existing planes from viewport
+    this.model.planes.forEach(plane => this.viewport3d.remove(plane.getGroup()))
 
-    // Create a single plane
-    const newPlane = new SketchPlane(DEFAULT_BUILDING_SIZE, 0)
-    this.sketchPlanes.length = 0
-    this.sketchPlanes.push(newPlane)
+    // Create fresh model with single plane
+    this.model = new Model('untitled', [new SketchPlane(DEFAULT_BUILDING_SIZE, 0)])
 
     // Add to viewport
-    this.viewport3d.add(newPlane.getGroup())
+    this.model.planes.forEach(plane => this.viewport3d.add(plane.getGroup()))
 
     // Reset plane selector
-    this.planeSelector.reset(this.sketchPlanes)
+    this.planeSelector.reset(this.model.planes)
 
     // Reset display settings
     this.mainToolbar.reset()
@@ -228,34 +227,44 @@ export class App {
     // Rebuild loft
     this.rebuildLoft()
 
-    // Select the new plane
-    this.planeSelector.selectPlane(newPlane)
+    // Select the first plane
+    this.planeSelector.selectPlane(this.model.planes[0])
   }
 
   /**
    * Load a building from saved data
    */
   private loadBuilding(data: BuildingData): void {
-    // Remove all existing planes
-    this.sketchPlanes.forEach(plane => this.viewport3d.remove(plane.getGroup()))
-    this.sketchPlanes.length = 0
+    // Remove all existing planes from viewport
+    this.model.planes.forEach(plane => this.viewport3d.remove(plane.getGroup()))
 
-    // Deserialize and add new planes
-    const newPlanes = BuildingSerializer.deserialize(data)
-    for (const plane of newPlanes) {
-      this.sketchPlanes.push(plane)
-      this.viewport3d.add(plane.getGroup())
-    }
+    // Deserialize into new model
+    this.model = BuildingSerializer.deserialize(data)
+
+    // Add new planes to viewport
+    this.model.planes.forEach(plane => this.viewport3d.add(plane.getGroup()))
+
+    // Sync minimap lock states from model
+    this.syncMinimapFromModel()
 
     // Reset plane selector
-    this.planeSelector.reset(this.sketchPlanes)
+    this.planeSelector.reset(this.model.planes)
 
     // Rebuild loft
     this.rebuildLoft()
 
     // Select first plane
-    if (this.sketchPlanes.length > 0) {
-      this.planeSelector.selectPlane(this.sketchPlanes[0])
+    if (this.model.planes.length > 0) {
+      this.planeSelector.selectPlane(this.model.planes[0])
+    }
+  }
+
+  /**
+   * Sync minimap lock states from model
+   */
+  private syncMinimapFromModel(): void {
+    for (let i = 0; i < this.model.segmentLocked.length; i++) {
+      this.minimap.setSegmentLocked(i, this.model.segmentLocked[i])
     }
   }
 
@@ -268,7 +277,7 @@ export class App {
       if (plane) {
         this.sketchEditor.setSketch(plane.getSketch())
         // Update minimap selection (planes sorted by height, 0 = bottom)
-        const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+        const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
         const planeIndex = sortedPlanes.indexOf(plane)
         this.minimap.setSelectedPlane(planeIndex)
       } else {
@@ -321,7 +330,7 @@ export class App {
 
     // Main toolbar callbacks
     this.mainToolbar.setOnPlanesChange((visible) => {
-      this.sketchPlanes.forEach(plane => plane.getGroup().visible = visible)
+      this.model.planes.forEach(plane => plane.getGroup().visible = visible)
       if (!visible) {
         this.planeSelector.deselectAll()
       }
@@ -366,18 +375,17 @@ export class App {
     })
 
     this.fileMenu.setOnGetCurrentData(() => {
-      return BuildingSerializer.serialize(this.sketchPlanes)
+      return BuildingSerializer.serialize(this.model)
     })
 
     // Minimap callbacks
     this.minimap.setOnSegmentLockChange((segmentIndex, locked) => {
-      console.log(`Segment ${segmentIndex} ${locked ? 'locked' : 'unlocked'}`)
-      // TODO: Implement actual locking behavior
+      this.model.setSegmentLocked(segmentIndex, locked)
     })
 
     this.minimap.setOnPlaneSelect((planeIndex) => {
       // Planes are sorted by height (0 = bottom, higher = top)
-      const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+      const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
       if (planeIndex >= 0 && planeIndex < sortedPlanes.length) {
         this.planeSelector.selectPlane(sortedPlanes[planeIndex])
       }
