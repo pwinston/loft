@@ -61,7 +61,7 @@ export class App {
     this.minimap = new Minimap(container2d)
 
     // Create plane selector
-    this.planeSelector = new PlaneSelector(this.viewport3d, this.model.planes)
+    this.planeSelector = new PlaneSelector(this.viewport3d, this.model)
 
     // Wire up all callbacks
     this.setupCallbacks()
@@ -140,14 +140,21 @@ export class App {
   }
 
   /**
-   * Rebuild the loft mesh from current planes
+   * Rebuild the loft mesh from current planes.
+   * Respects segment lock states - locked segments keep their topology.
    */
   private rebuildLoft(): void {
     this.syncPlaneSizes()
-    const model = LoftableModel.fromPlanes(this.model.planes)
-    this.loft.rebuildFromModel(model)
+    const loftModel = LoftableModel.fromModel(this.model)
+    this.loft.rebuildFromModel(loftModel)
     this.minimap.setPlaneCount(this.model.planes.length)
+
+    // Store reference to current loft model for freezing segments
+    this.currentLoftModel = loftModel
   }
+
+  /** Current loft model, needed for capturing frozen segments */
+  private currentLoftModel: LoftableModel | null = null
 
   /**
    * Called when a sketch is modified by the user (vertex moved, inserted, deleted)
@@ -219,7 +226,7 @@ export class App {
     this.model.planes.forEach(plane => this.viewport3d.add(plane.getGroup()))
 
     // Reset plane selector
-    this.planeSelector.reset(this.model.planes)
+    this.planeSelector.reset(this.model)
 
     // Reset display settings
     this.mainToolbar.reset()
@@ -248,7 +255,7 @@ export class App {
     this.syncMinimapFromModel()
 
     // Reset plane selector
-    this.planeSelector.reset(this.model.planes)
+    this.planeSelector.reset(this.model)
 
     // Rebuild loft
     this.rebuildLoft()
@@ -380,7 +387,30 @@ export class App {
 
     // Minimap callbacks
     this.minimap.setOnSegmentLockChange((segmentIndex, locked) => {
+      console.log(`[onSegmentLockChange] segmentIndex=${segmentIndex}, locked=${locked}`)
+      console.log(`[onSegmentLockChange] currentLoftModel exists: ${this.currentLoftModel !== null}`)
+
+      if (locked && this.currentLoftModel) {
+        // Locking: capture frozen segment data from current topology
+        const segment = this.currentLoftModel.segments[segmentIndex]
+        console.log(`[onSegmentLockChange] segment exists: ${segment !== undefined}`)
+        if (segment) {
+          const frozen = LoftableModel.freezeSegment(
+            segment.bottomPlane,
+            segment.topPlane,
+            segment.faces
+          )
+          console.log(`[onSegmentLockChange] Created frozen segment with ${frozen.faces.length} faces`)
+          this.model.setFrozenSegment(segmentIndex, frozen)
+        }
+      }
       this.model.setSegmentLocked(segmentIndex, locked)
+      console.log(`[onSegmentLockChange] After setSegmentLocked: locked=${this.model.isSegmentLocked(segmentIndex)}, hasFrozen=${this.model.getFrozenSegment(segmentIndex) !== null}`)
+
+      // Rebuild loft when unlocking to use fresh topology
+      if (!locked) {
+        this.rebuildLoft()
+      }
     })
 
     this.minimap.setOnPlaneSelect((planeIndex) => {
