@@ -87,6 +87,36 @@ export class App {
       this.viewport3d.resize()
       this.sketchEditor.resize()
     })
+
+    // Debug key handler
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'd' || e.key === 'D') {
+        this.exportLoftDebugData()
+      }
+    })
+  }
+
+  /**
+   * Export loft debug data to console and download as JSON
+   */
+  private exportLoftDebugData(): void {
+    const model = LoftableModel.fromPlanes(this.sketchPlanes)
+    const debugData = model.exportDebugData()
+
+    // Log to console
+    console.log('=== LOFT DEBUG DATA ===')
+    console.log(JSON.stringify(debugData, null, 2))
+
+    // Download as JSON file
+    const blob = new Blob([JSON.stringify(debugData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `loft-debug-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    console.log('Debug data downloaded!')
   }
 
   /**
@@ -112,6 +142,14 @@ export class App {
     this.syncPlaneSizes()
     const model = LoftableModel.fromPlanes(this.sketchPlanes)
     this.loft.rebuildFromModel(model)
+  }
+
+  /**
+   * Called when a sketch is modified by the user (vertex moved, inserted, deleted)
+   */
+  private onSketchModified(): void {
+    this.rebuildLoft()
+    this.sketchToolbar.clearActiveSides()
   }
 
   /**
@@ -229,6 +267,7 @@ export class App {
         this.sketchEditor.clear()
       }
       this.updateRoofVisibility()
+      this.sketchToolbar.clearActiveSides()
     })
 
     this.planeSelector.setOnPlaneHeightChange(() => {
@@ -251,7 +290,7 @@ export class App {
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
         selectedPlane.setVertex(index, position)
-        this.rebuildLoft()
+        this.onSketchModified()
       }
     })
 
@@ -259,7 +298,7 @@ export class App {
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
         selectedPlane.insertVertex(segmentIndex, position)
-        this.rebuildLoft()
+        this.onSketchModified()
       }
     })
 
@@ -267,7 +306,7 @@ export class App {
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
         selectedPlane.deleteVertex(index)
-        this.rebuildLoft()
+        this.onSketchModified()
       }
     })
 

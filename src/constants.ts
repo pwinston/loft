@@ -1,5 +1,5 @@
 // App version (increment to verify code changes are live)
-export const VERSION = 4
+export const VERSION = 6
 
 // Grid configuration
 export const GRID = {

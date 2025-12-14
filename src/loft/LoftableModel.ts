@@ -111,4 +111,55 @@ export class LoftableModel {
     }
     return planes
   }
+
+  /**
+   * Export debug data for all segments.
+   * Use this to capture loft input data for debugging/testing.
+   */
+  exportDebugData(): LoftDebugData {
+    return {
+      timestamp: new Date().toISOString(),
+      segmentCount: this.segments.length,
+      segments: this.segments.map((seg, i) => ({
+        index: i,
+        bottom: {
+          height: seg.getBottomHeight(),
+          vertices: seg.bottomPlane.getVertices().map(v => [v.x, v.y] as [number, number])
+        },
+        top: {
+          height: seg.getTopHeight(),
+          vertices: seg.topPlane.getVertices().map(v => [v.x, v.y] as [number, number])
+        },
+        faceCount: seg.faces.length,
+        faceTypes: {
+          triangles: seg.faces.filter(f => f.vertices.length === 3).length,
+          quads: seg.faces.filter(f => f.vertices.length === 4).length
+        }
+      }))
+    }
+  }
+}
+
+/**
+ * Debug data structure for loft segments.
+ */
+export interface LoftDebugData {
+  timestamp: string
+  segmentCount: number
+  segments: Array<{
+    index: number
+    bottom: {
+      height: number
+      vertices: [number, number][]
+    }
+    top: {
+      height: number
+      vertices: [number, number][]
+    }
+    faceCount: number
+    faceTypes: {
+      triangles: number
+      quads: number
+    }
+  }>
 }
