@@ -1,10 +1,10 @@
 import { Viewport3D } from './3d/Viewport3D'
 import { PlaneSelector } from './3d/PlaneSelector'
 import { SketchEditor } from './2d/SketchEditor'
-import { SketchPlane } from './3d/SketchPlane'
+import { SketchPlane, type PlaneBounds } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft } from './3d/Loft'
-import { DEFAULT_BUILDING_SIZE } from './constants'
+import { DEFAULT_BUILDING_SIZE, VERSION } from './constants'
 import { LoftableModel } from './loft/LoftableModel'
 import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
@@ -65,6 +65,9 @@ export class App {
     // Create help panels
     this.createHelpPanels()
 
+    // Create version badge
+    this.createVersionBadge()
+
     // Initial build
     this.rebuildLoft()
   }
@@ -106,8 +109,35 @@ export class App {
    * Rebuild the loft mesh from current planes
    */
   private rebuildLoft(): void {
+    this.syncPlaneSizes()
     const model = LoftableModel.fromPlanes(this.sketchPlanes)
     this.loft.rebuildFromModel(model)
+  }
+
+  /**
+   * Make all planes the same size (the max bounds across all planes)
+   */
+  private syncPlaneSizes(): void {
+    if (this.sketchPlanes.length === 0) return
+
+    // Calculate max bounds across all planes
+    let minX = Infinity, maxX = -Infinity
+    let minY = Infinity, maxY = -Infinity
+
+    for (const plane of this.sketchPlanes) {
+      const bounds = plane.getBounds()
+      minX = Math.min(minX, bounds.minX)
+      maxX = Math.max(maxX, bounds.maxX)
+      minY = Math.min(minY, bounds.minY)
+      maxY = Math.max(maxY, bounds.maxY)
+    }
+
+    const sharedBounds: PlaneBounds = { minX, maxX, minY, maxY }
+
+    // Apply to all planes
+    for (const plane of this.sketchPlanes) {
+      plane.setSharedBounds(sharedBounds)
+    }
   }
 
   /**
@@ -290,6 +320,16 @@ export class App {
     this.fileMenu.setOnGetCurrentData(() => {
       return BuildingSerializer.serialize(this.sketchPlanes)
     })
+  }
+
+  /**
+   * Create version badge in corner of 3D viewport
+   */
+  private createVersionBadge(): void {
+    const badge = document.createElement('div')
+    badge.className = 'version-badge'
+    badge.textContent = `v${VERSION}`
+    this.container3d.appendChild(badge)
   }
 
   /**
