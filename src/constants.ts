@@ -70,6 +70,8 @@ export const LOFT = {
   SOLID_COLOR: 0x4488cc,
   WIRE_COLOR: 0xdddddd,  // Light gray wireframe for quad edges
   DIAGONAL_WIRE_COLOR: 0xff8844,  // Orange dashed for triangulation diagonals
+  // Locked segment tint - warm shift (r, g, b multipliers)
+  LOCKED_TINT: { r: 1.5, g: 1.0, b: 0.5 },  // DRAMATIC for testing
 }
 
 // Interaction thresholds

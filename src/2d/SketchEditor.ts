@@ -237,7 +237,9 @@ export class SketchEditor {
         this.activeHandle = this.selectionHandles.getHandleType(mesh)
         this.setupTransformTool(event)
         this.selectionHandles.hide()  // Hide handles during manipulation
-        this.container.style.cursor = this.activeHandle === 'rotate' ? 'grab' : 'ns-resize'
+        this.container.style.cursor = this.activeHandle === 'rotate' ? 'grab'
+                                   : this.activeHandle === 'move' ? 'move'
+                                   : 'ns-resize'
         return
       }
     }
@@ -442,7 +444,24 @@ export class SketchEditor {
     const ndc = this.getMouseNDC(event)
     this.raycaster.setFromCamera(ndc, this.camera)
 
-    // First check vertices (they have priority)
+    // First check selection handles (highest priority)
+    if (this.selectionHandles.isVisible()) {
+      const handleMeshes = this.selectionHandles.getHandleMeshes()
+      const handleIntersects = this.raycaster.intersectObjects(handleMeshes)
+
+      if (handleIntersects.length > 0) {
+        // Hovering over a handle - hide ghost, show appropriate cursor
+        this.ghostVertex.visible = false
+        this.hoveredSegmentIndex = null
+        const handleType = this.selectionHandles.getHandleType(handleIntersects[0].object)
+        this.container.style.cursor = handleType === 'rotate' ? 'grab'
+                                    : handleType === 'move' ? 'move'
+                                    : 'ns-resize'
+        return
+      }
+    }
+
+    // Check vertices (they have priority)
     const vertexMeshes = this.currentSketch.getVertexMeshes()
     const vertexIntersects = this.raycaster.intersectObjects(vertexMeshes)
 
