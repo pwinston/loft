@@ -228,7 +228,7 @@ export class App {
     }
 
     // Find the plane below the selected one
-    const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+    const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
     const selectedIndex = sortedPlanes.indexOf(selectedPlane)
 
     if (selectedIndex > 0) {
