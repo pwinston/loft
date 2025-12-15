@@ -475,6 +475,7 @@ export class App {
     new HelpPanel([
       { key: 'Scroll', action: 'Zoom' },
       { key: 'Right-drag', action: 'Pan' },
+      { key: 'Left-drag', action: 'Sweep select' },
       { key: 'Double-click', action: 'Delete vertex' },
     ]).appendTo(this.container2d)
   }
