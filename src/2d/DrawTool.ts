@@ -3,7 +3,6 @@ import type { EditorTool, ToolResult } from './EditorTool'
 import { SKETCH } from '../constants'
 
 const CLOSE_THRESHOLD = 1.5  // Screen-space snap distance to first vertex (in vertex-scale units)
-const DOUBLE_CLICK_MS = 300  // Max time between clicks for double-click
 const DRAW_LINE_COLOR = 0x99bb99  // Desaturated/whitish green during drawing
 const CLOSE_LINE_COLOR = 0x44cc44  // Brighter green when about to close
 
@@ -18,7 +17,6 @@ export class DrawTool implements EditorTool {
   private vertexMeshes: THREE.Mesh[] = []  // Visual markers for all placed vertices
   private scene: THREE.Scene
   private vertexScale: number
-  private lastClickTime: number = 0
   private isNearFirstVertex: boolean = false
 
   constructor(scene: THREE.Scene, vertexScale: number) {
@@ -138,20 +136,8 @@ export class DrawTool implements EditorTool {
   }
 
   onMouseUp(worldPos: THREE.Vector2): ToolResult {
-    const now = Date.now()
-    const isDoubleClick = (now - this.lastClickTime) < DOUBLE_CLICK_MS
-    this.lastClickTime = now
-
-    // Check for close conditions
-    const canClose = this.vertices.length >= 3
-
-    // Close on double-click
-    if (isDoubleClick && canClose) {
-      return { drawnVertices: [...this.vertices], done: true }
-    }
-
-    // Close on click near first vertex
-    if (this.isNearFirstVertex && canClose) {
+    // Close on click near first vertex (with 3+ vertices)
+    if (this.isNearFirstVertex && this.vertices.length >= 3) {
       return { drawnVertices: [...this.vertices], done: true }
     }
 
