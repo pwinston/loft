@@ -468,8 +468,8 @@ export class App {
       { key: 'Right-drag', action: 'Pan' },
       { key: 'Left-drag', action: 'Orbit' },
       { key: 'Drag plane', action: 'Adjust height' },
-      { key: 'Shift-drag', action: 'Copy floor' },
-      { key: 'Drag down', action: 'Delete floor' },
+      { key: 'Shift-drag', action: 'Copy plane' },
+      { key: 'Drag down', action: 'Delete plane' },
     ]).appendTo(this.container3d)
 
     new HelpPanel([
