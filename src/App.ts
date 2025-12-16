@@ -371,6 +371,21 @@ export class App {
       }
     })
 
+    this.sketchEditor.setOnPlaneDeleteRequest(() => {
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (selectedPlane) {
+        // Remove from scene
+        this.viewport3d.remove(selectedPlane.getGroup())
+        // Remove from model
+        this.model.removePlane(selectedPlane)
+        // Clear selection
+        this.planeSelector.deselectAll()
+        // Rebuild loft
+        this.rebuildLoft()
+        this.updateRoofVisibility()
+      }
+    })
+
     this.sketchEditor.setOnDrawComplete((vertices) => {
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
