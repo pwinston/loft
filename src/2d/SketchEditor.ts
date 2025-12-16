@@ -31,6 +31,7 @@ export class SketchEditor {
   private hoveredSegmentIndex: number | null = null
   private onVertexInsert: ((segmentIndex: number, position: THREE.Vector2) => void) | null = null
   private onVertexDelete: ((index: number) => void) | null = null
+  private onPlaneDeleteRequest: (() => void) | null = null
 
   // Panning state
   private isPanning: boolean = false
@@ -158,8 +159,20 @@ export class SketchEditor {
       }
     }
 
-    if ((event.key === 'Delete' || event.key === 'Backspace') && this.currentSketch) {
-      this.deleteSelectedVertices()
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (this.currentSketch) {
+        const selectedIndices = this.currentSketch.getSelectedIndices()
+        if (selectedIndices.length > 0) {
+          // Delete selected vertices
+          this.deleteSelectedVertices()
+        } else {
+          // No vertices selected - request plane deletion
+          this.onPlaneDeleteRequest?.()
+        }
+      } else {
+        // No sketch loaded - might still want to delete the plane
+        this.onPlaneDeleteRequest?.()
+      }
     }
   }
 
@@ -743,6 +756,13 @@ export class SketchEditor {
    */
   setOnVertexDelete(callback: (index: number) => void): void {
     this.onVertexDelete = callback
+  }
+
+  /**
+   * Set callback for when plane deletion is requested (Delete key with no vertex selection)
+   */
+  setOnPlaneDeleteRequest(callback: () => void): void {
+    this.onPlaneDeleteRequest = callback
   }
 
   /**
