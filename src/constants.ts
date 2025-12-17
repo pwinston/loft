@@ -62,6 +62,7 @@ export const PLANE = {
     hovered:  { color: 0x998866, opacity: 0.3 },
     selected: { color: 0xffcc00, opacity: 0.4 },
     deleting: { color: 0xff0000, opacity: 0.5 },
+    dimmed:   { color: 0x333333, opacity: 0.15 },
   },
 }
 
