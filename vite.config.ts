@@ -120,5 +120,6 @@ function buildingsApiPlugin(): Plugin {
 }
 
 export default defineConfig({
+  base: "/loft/",
   plugins: [buildingsApiPlugin()]
 })

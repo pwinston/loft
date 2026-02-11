@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/three": "^0.182.0",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4"
-  },
+    "autoprefixer": "^9.8.0",
+    "postcss": "^8.x",
+    "postcss-cli": "^5.0.1"
+  },  
   "dependencies": {
     "three": "^0.182.0"
   }
